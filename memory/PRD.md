@@ -1,0 +1,21 @@
+# DrillStock Pro — PRD
+
+## Original problem statement
+iOS/Android drilling warehouse inventory app integrated with Zoho Inventory; QLD + NSW warehouses, bins, SKUs, warehouse quantities. Drillers sign in, pick name + rig, scan bin QR / search, submit take/return requests; managers (own warehouse) approve/reject before Zoho transactions update stock; audit trail + notifications. Roles: driller, manager, admin (cross-warehouse). Stocktake, cycle counts, low-stock alerts, discrepancy reports, bin mgmt, printable QR labels, movement history, dashboards. Equipment borrow/return register (driller, rig, equipment ID, timestamps, condition both events, notes, photos; availability, overdue, history). Rugged high-contrast UI, secure auth, Zoho OAuth settings, reliable transactions.
+
+## User choices
+Zoho MOCKED for now · JWT email/password roles (+ Google login requested, deferred) · photos in app (Emergent object storage) · in-app notifications (+ push requested, deferred) · dark industrial theme, safety yellow.
+
+## Architecture
+- Backend FastAPI `server.py` (+ `zoho.py` mock/live adapter, `storage.py` object storage, `seed.py` idempotent demo data), MongoDB, string uuid ids, `_id` excluded.
+- Approvals: pending→processing lock, Zoho adjustment first, then atomic conditional stock updates w/ compensation; client_ref idempotency.
+- Frontend Expo Router: tabs Home/Stock/Equipment/More (NativeTabs on iOS 26+), screens scan, request/new, request/[id], requests, bin/[id], product/[id], equipment/[id], equipment/action, counts, counts/[id], bins, reports, notifications, zoho, users.
+
+## Implemented (2026-06)
+All features above end-to-end; testing iteration_1: backend 24/24, frontend critical flows green.
+
+## Backlog
+- P0: Real Zoho credentials → set ZOHO_MODE=live, item ID mapping/sync of items from Zoho
+- P1: Emergent Google social login; push notifications (needs google-services.json + build)
+- P1: Offline queue for requests on poor site connectivity
+- P2: CSV/PDF export of reports, bin-to-bin transfers, equipment QR label printing

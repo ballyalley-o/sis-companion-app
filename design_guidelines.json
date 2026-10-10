@@ -1,0 +1,154 @@
+{
+  "app_name": "DrillStock Pro",
+  "personality": "7. Dark-First Utility DARK",
+  "personality_one_liner": "A rugged, tactical command center prioritizing scan-first workflows, instant readability, and glove-friendly interaction through high-contrast safety yellow accents and oversized touch targets.",
+  "color": {
+    "surface": "#121212",
+    "onSurface": "#F2F2F2",
+    "surfaceSecondary": "#242424",
+    "onSurfaceSecondary": "#E0E0E0",
+    "surfaceTertiary": "#333333",
+    "onSurfaceTertiary": "#CCCCCC",
+    "surfaceInverse": "#EEEEEE",
+    "onSurfaceInverse": "#121212",
+    "brand": "#FFD600",
+    "brandPrimary": "#FFD600",
+    "onBrandPrimary": "#121212",
+    "brandSecondary": "#E5C000",
+    "onBrandSecondary": "#121212",
+    "brandTertiary": "#4D4100",
+    "onBrandTertiary": "#FFD600",
+    "success": "#00E676",
+    "onSuccess": "#000000",
+    "warning": "#FF9100",
+    "onWarning": "#000000",
+    "error": "#FF3D00",
+    "onError": "#000000",
+    "info": "#40C4FF",
+    "onInfo": "#000000",
+    "border": "#3A3A3A",
+    "borderStrong": "#5A5A5A",
+    "divider": "#2A2A2A",
+    "muted": "#8A8A8A",
+    "onBrand": "#121212"
+  },
+  "typography": {
+    "displayFontFamily": "Barlow Condensed",
+    "textFontFamily": "Manrope",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous spacing for glove-friendly interaction, min 48pt tap targets, bottom-heavy layouts for ergonomics.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "0",
+  "navigation": "bottom_tabs",
+  "icon_set": "MaterialCommunityIcons",
+  "glassmorphism": {
+    "enabled": "false",
+    "do's": [
+      "Use solid surfaceSecondary and surfaceTertiary to maintain high contrast and clarity in warehouse environments."
+    ],
+    "dont's": [
+      "Do not use blur or glass effects, as they reduce readability under glare and cost performance on low-end scanners."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Dashboard",
+      "purpose": "A live operational surface for drillers to quickly access scan tools, equipment register, and view low-stock alerts.",
+      "states": {
+        "loading": "Centered bright yellow spinner on obsidian background.",
+        "empty": "No alerts, showing large 'All Systems Go' with hardhat illustration.",
+        "error": "Failed to load dashboard. Retry button in safety yellow."
+      },
+      "layout": "Hero image at the top with a gradient scrim. Below it, a 2-column grid of oversized quick action cards (Scan Bin, Search, Equip, Count) filling the horizontal space. Bottom section for sticky alerts/notifications."
+    },
+    {
+      "name": "Scan / QR Workflow",
+      "purpose": "Continuous, distraction-free barcode scanning loop for bins and products.",
+      "states": {
+        "loading": "Initializing camera...",
+        "empty": "Waiting for scan. Display a large semi-transparent scan button.",
+        "error": "Invalid QR code. Show temporary red toast and haptic buzz."
+      },
+      "layout": "Full-screen camera view with a persistent bottom sheet containing a massive safety-yellow 'Scan' button (or hardware trigger hint) and recent scan history. Use high-contrast success/error visual flashes."
+    },
+    {
+      "name": "Equipment Register",
+      "purpose": "A structured form to checkout or return heavy equipment with condition tracking and photo capture.",
+      "states": {
+        "loading": "Loading equipment details...",
+        "empty": "No equipment currently signed out.",
+        "error": "Unable to submit register. Please retry."
+      },
+      "layout": "Single-column scrollable form. Floating labels over large input fields. Toggles for condition (Good/Damaged). Sticky 'Submit Request' CTA pinned to the safe-area bottom over the scroll view."
+    },
+    {
+      "name": "Approvals Queue",
+      "purpose": "Managerial view for reviewing stock take/return requests from drillers.",
+      "states": {
+        "loading": "Fetching pending approvals...",
+        "empty": "Queue is clear. No pending approvals.",
+        "error": "Failed to load queue. Pull to refresh."
+      },
+      "layout": "List of distinct cards showing driller name, item, and quantity. Each card has oversized 'Approve' (success) and 'Reject' (error) action buttons. Tonal dividers instead of shadows."
+    }
+  ],
+  "images": {
+    "hero_dashboard": {
+      "url": "https://images.unsplash.com/photo-1562237553-fd52cb2067b6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzV8MHwxfHNlYXJjaHwzfHx3YXJlaG91c2UlMjBkcmlsbGluZyUyMHJpZyUyMGluZHVzdHJpYWx8ZW58MHx8fHwxNzkxNjIxMjgyfDA&ixlib=rb-4.1.0&q=85",
+      "dark": "https://images.unsplash.com/photo-1562237553-fd52cb2067b6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzV8MHwxfHNlYXJjaHwzfHx3YXJlaG91c2UlMjBkcmlsbGluZyUyMHJpZyUyMGluZHVzdHJpYWx8ZW58MHx8fHwxNzkxNjIxMjgyfDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Nighttime view of a rugged drilling rig for dashboard hero background"
+    },
+    "empty_warehouse": {
+      "url": "https://images.unsplash.com/photo-1553413077-190dd305871c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTF8MHwxfHNlYXJjaHwyfHxpbmR1c3RyaWFsJTIwYmFyY29kZSUyMHNjYW5uaW5nJTIwd2FyZWhvdXNlfGVufDB8fHx8MTc5MTYyMTI4Mnww&ixlib=rb-4.1.0&q=85",
+      "dark": "https://images.unsplash.com/photo-1553413077-190dd305871c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTF8MHwxfHNlYXJjaHwyfHxpbmR1c3RyaWFsJTIwYmFyY29kZSUyMHNjYW5uaW5nJTIwd2FyZWhvdXNlfGVufDB8fHx8MTc5MTYyMTI4Mnww&ixlib=rb-4.1.0&q=85",
+      "alt": "Large industrial warehouse aisles"
+    },
+    "empty_state_hardhat": {
+      "url": "https://images.unsplash.com/photo-1768158988512-ad31657fe5b8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwxfHx3YXJlaG91c2UlMjB3b3JrZXIlMjBoYXJkaGF0JTIwc2FmZXR5fGVufDB8fHx8MTc5MTYyMTI4Mnww&ixlib=rb-4.1.0&q=85",
+      "dark": "https://images.unsplash.com/photo-1768158988512-ad31657fe5b8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwxfHx3YXJlaG91c2UlMjB3b3JrZXIlMjBoYXJkaGF0JTIwc2FmZXR5fGVufDB8fHx8MTc5MTYyMTI4Mnww&ixlib=rb-4.1.0&q=85",
+      "alt": "Yellow hard hat on wooden pallet for empty states"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow the Dark-First Utility guidelines: pure dark background (#121212) with high-visibility safety yellow (#FFD600) accents. Avoid muddy grays.",
+    "Do NOT use glassmorphism or blur effects on any screen; replace with solid surfaceSecondary layers to guarantee absolute readability in warehouse conditions.",
+    "For the scanner UI, avoid multi-step wizards. Keep it a continuous loop with a massive, bottom-anchored scan button and immediate haptic/audio feedback.",
+    "Ensure all touch targets (especially in the Equipment Register and Queue) are oversized (min 48x48pt) to accommodate gloved hands.",
+    "Pin primary CTAs to the safe-area bottom inside a fixed container on scrollable forms (like the Equipment register).",
+    "For text placed over the dashboard hero image, you MUST use an absolute-positioned vertical gradient scrim from transparent to 70%+ surfaceInverse.",
+    "Never use blue, purple, or indigo in this design. Follow the explicit token catalog."
+  ]
+}
