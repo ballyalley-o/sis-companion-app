@@ -21,6 +21,12 @@ All features above end-to-end; testing iteration_1: backend 24/24, frontend crit
 - "Did you mean" spelling helper (/api/products/suggest, difflib)
 - Tests: iteration_2 backend 15/15, frontend verified
 
+## Iteration 3 (2026-06)
+- Rig kits: managers/admins create/edit/delete standard kits per rig (/kits, /kit/[id]); drillers tap "Add kit" in new take request (qty capped by bin availability, shortages flagged)
+- Google Sign-In (Emergent-managed) → app JWT; existing emails keep their role, unknown Google users auto-created as drillers; admins notified
+- Zoho live connection deferred by user (still mocked)
+- Tests: iteration_3 backend 15/15, frontend flows green
+
 ## Backlog
 - P0: Real Zoho credentials → set ZOHO_MODE=live, item ID mapping/sync of items from Zoho
 - P1: Emergent Google social login; push notifications (needs google-services.json + build)

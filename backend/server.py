@@ -11,6 +11,7 @@ import re
 from difflib import SequenceMatcher, get_close_matches
 
 import bcrypt
+import httpx
 import jwt
 import qrcode
 from dotenv import load_dotenv
@@ -108,7 +109,7 @@ class LoginIn(BaseModel):
 @api.post("/auth/login")
 async def login(body: LoginIn):
     user = await db.users.find_one({"email": body.email.strip().lower()}, NOPROJ)
-    ok = user and bcrypt.checkpw(body.password.encode(), user["password_hash"].encode())
+    ok = user and user.get("password_hash") and bcrypt.checkpw(body.password.encode(), user["password_hash"].encode())
     if not ok or not user.get("active"):
         raise HTTPException(401, "Incorrect email or password")
     await audit(user, "auth.login", "user", user["id"], {})
@@ -118,6 +119,37 @@ async def login(body: LoginIn):
 @api.get("/auth/me")
 async def me(user=Depends(current_user)):
     return public_user(user)
+
+
+class SessionIn(BaseModel):
+    session_id: str
+
+
+@api.post("/auth/session")
+async def google_session(body: SessionIn):
+    """Exchange Emergent Google-auth session_id (one-time) for the app's JWT."""
+    async with httpx.AsyncClient(timeout=20) as hc:
+        r = await hc.get("https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+                         headers={"X-Session-ID": body.session_id})
+    if r.status_code != 200:
+        raise HTTPException(401, "Google sign-in failed or expired, please try again")
+    data = r.json()
+    email = (data.get("email") or "").strip().lower()
+    if not email:
+        raise HTTPException(401, "Google account has no email")
+    user = await db.users.find_one({"email": email}, NOPROJ)
+    if not user:
+        user = {"id": nid(), "email": email, "password_hash": None, "name": data.get("name") or email.split("@")[0],
+                "role": "driller", "warehouse_id": None, "active": True, "auth_provider": "google",
+                "picture": data.get("picture"), "created_at": iso()}
+        await db.users.insert_one(dict(user))
+        await audit(user, "user.create_google", "user", user["id"], {"email": email})
+        await notify("New Google sign-up", f"{user['name']} ({email}) joined as a driller", kind="info", roles_=["admin"])
+    elif not user.get("active"):
+        raise HTTPException(403, "Your account is deactivated. Contact an admin.")
+    await audit(user, "auth.login_google", "user", user["id"], {})
+    token = make_token(user)
+    return {"session_token": token, "access_token": token, "user": public_user(user)}
 
 
 # ---------------------------------------------------------------- helpers
@@ -676,6 +708,91 @@ async def create_receipt(body: ReceiptIn, user=Depends(roles("manager", "admin")
 async def list_receipts(warehouse_id: Optional[str] = None, user=Depends(roles("manager", "admin"))):
     wh = scope_wh(user, warehouse_id)
     return await db.receipts.find({"warehouse_id": wh} if wh else {}, NOPROJ).sort("created_at", -1).to_list(200)
+
+
+# ---------------------------------------------------------------- rig kits
+class KitItem(BaseModel):
+    product_id: str
+    qty: int = Field(gt=0, le=10000)
+
+
+class KitIn(BaseModel):
+    name: str
+    rig_number: str
+    warehouse_id: str
+    items: List[KitItem] = Field(min_length=1)
+
+
+async def kit_doc(body: KitIn, user):
+    ensure_wh_access(user, body.warehouse_id)
+    if not await db.rigs.find_one({"number": body.rig_number}):
+        raise HTTPException(400, "Unknown rig number")
+    items = []
+    for it in body.items:
+        p = await db.products.find_one({"id": it.product_id}, NOPROJ)
+        if not p:
+            raise HTTPException(400, "Unknown product in kit")
+        items.append({"product_id": p["id"], "sku": p["sku"], "name": p["name"], "unit": p["unit"], "qty": it.qty})
+    return {"name": body.name.strip() or f"{body.rig_number} kit", "rig_number": body.rig_number,
+            "warehouse_id": body.warehouse_id, "items": items, "updated_by": user["name"], "updated_at": iso()}
+
+
+async def enrich_kit(k):
+    """Attach the best bin (most stock) in the kit's warehouse for each item."""
+    out = []
+    for it in k["items"]:
+        best = await db.stock.find({"product_id": it["product_id"], "warehouse_id": k["warehouse_id"]}, NOPROJ).sort("qty", -1).to_list(1)
+        b = await db.bins.find_one({"id": best[0]["bin_id"]}, NOPROJ) if best else None
+        out.append({**it, "bin_id": b["id"] if b else None, "bin_code": b["code"] if b else None, "avail": best[0]["qty"] if best else 0})
+    return {**k, "items": out, "short": sum(1 for i in out if i["avail"] < i["qty"])}
+
+
+@api.get("/kits")
+async def list_kits(rig: Optional[str] = None, warehouse_id: Optional[str] = None, user=Depends(current_user)):
+    wh = scope_wh(user, warehouse_id)
+    filt = {**({"warehouse_id": wh} if wh else {}), **({"rig_number": rig} if rig else {})}
+    kits = await db.rig_kits.find(filt, NOPROJ).sort([("rig_number", 1), ("name", 1)]).to_list(500)
+    return [await enrich_kit(k) for k in kits]
+
+
+@api.get("/kits/{kid}")
+async def get_kit(kid: str, user=Depends(current_user)):
+    k = await db.rig_kits.find_one({"id": kid}, NOPROJ)
+    if not k:
+        raise HTTPException(404, "Kit not found")
+    ensure_wh_access(user, k["warehouse_id"])
+    return await enrich_kit(k)
+
+
+@api.post("/kits")
+async def create_kit(body: KitIn, user=Depends(roles("manager", "admin"))):
+    doc = {"id": nid(), **(await kit_doc(body, user)), "created_at": iso()}
+    await db.rig_kits.insert_one(dict(doc))
+    await audit(user, "kit.create", "kit", doc["id"], {"name": doc["name"], "rig": doc["rig_number"]})
+    return doc
+
+
+@api.put("/kits/{kid}")
+async def update_kit(kid: str, body: KitIn, user=Depends(roles("manager", "admin"))):
+    k = await db.rig_kits.find_one({"id": kid}, NOPROJ)
+    if not k:
+        raise HTTPException(404, "Kit not found")
+    ensure_wh_access(user, k["warehouse_id"])
+    upd = await kit_doc(body, user)
+    await db.rig_kits.update_one({"id": kid}, {"$set": upd})
+    await audit(user, "kit.update", "kit", kid, {"name": upd["name"]})
+    return await db.rig_kits.find_one({"id": kid}, NOPROJ)
+
+
+@api.delete("/kits/{kid}")
+async def delete_kit(kid: str, user=Depends(roles("manager", "admin"))):
+    k = await db.rig_kits.find_one({"id": kid}, NOPROJ)
+    if not k:
+        raise HTTPException(404, "Kit not found")
+    ensure_wh_access(user, k["warehouse_id"])
+    await db.rig_kits.delete_one({"id": kid})
+    await audit(user, "kit.delete", "kit", kid, {"name": k["name"]})
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------- stock counts

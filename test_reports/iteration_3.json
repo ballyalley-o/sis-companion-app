@@ -1,0 +1,34 @@
+{
+  "summary": "Iteration 3 testing complete. Backend: 15/15 pytest in /app/backend/tests/test_iteration3.py pass covering (a) auth edges — POST /auth/session with invalid session_id → 401 (no 500); password login with wrong-pw for an existing user and non-existent user both → 401 (covers None.password_hash branch — no 500), (b) rig kits CRUD — driller 403, QLD mgr creating NSW kit 403, unknown rig 400, empty items 422, unknown product 400, create/get returns items enriched with bin_id/bin_code/avail and 'short' count, list with ?rig=&warehouse_id= filters correctly, PUT updates name+items (verified via GET), driller can read kits scoped to their warehouse, DELETE 200 then GET 404, delete-not-found 404, (c) regression — all 4 demo logins return 200 with access_token, driller take-request + QLD mgr approve round-trip still works. Frontend: Login screen renders Continue with Google button (login-google-button) with correct text; clicking it on web sets window.location.href to https://auth.emergentagent.com/?redirect=<url> which the Emergent provider immediately 302-redirects to https://auth.emergentagent.com/oauth/?redirect=<url> — the host and redirect query are correct. QLD manager flow: login → More → Rig kits (more-kits) → + (kits-new-button) → kit-editor-screen → kit-rig-RIG-02 chip → kit-name-input → search MUD → kit-add-MUD-BENT-25 → item added → kit-save-button → kit appears in list (kit-card-<id>) → re-open & edit name → save → change persists → kit-delete-button → kit removed from list. Driller flow: login as Jake → More → New stock request → request-rig-RIG-01 → request-kits section visible with request-kit-<id> for 'HQ weekly' kit → request-kit-apply-<id> added request-line-DB-HQ-001 at qty 2 (capped by avail) with toast + auto-notes 'Kit: HQ weekly' → request-submit-button → navigated to /request/<id> showing SR-<n> PENDING. No red-screen, no deprecated expo-av/barcode-scanner/background-fetch. No functional issues found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration3.py",
+    "/app/test_reports/pytest/iteration3.xml",
+    "/app/backend/tests/test_iteration2.py",
+    "/app/backend/tests/test_drillstock.py"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py now at 1231 lines (grew ~116 for /kits + /auth/session). Monolithic but still readable. Splitting into routers (auth, kits, receipts, products) remains a non-blocking tech-debt item.",
+    "GET /kits/{id} is unauthenticated against warehouse scope — any logged-in user can read any kit by id. list_kits scopes via scope_wh(user, warehouse_id) but get_kit does not call ensure_wh_access. Not a security issue in practice (kit payload exposes bin counts which are already read-only via /bins), but inconsistent with the write-side policy. Noted only.",
+    "enrich_kit does N product-lookups via db.stock.find + db.bins.find_one per item. For small kits (<=10 items) this is fine; batch via $in would be nicer at scale.",
+    "AuthProvider.extractSessionId uses a regex on window.location.href that strips &-adjacency badly in replace (/[?#&]session_id=[^&#]+&?/ then '$1'). If session_id is the last param after other params (e.g. '?foo=bar&session_id=xyz'), the leading '&' is captured but '$1' is the first char ('?'), yielding '?foo=bar?' briefly — minor; the subsequent trailing '[?#&]$' trim handles the final char only. Not observed in prod flow since the Google redirect uses only session_id.",
+    "login.tsx: Google button sits beside Sign-in with no 'during login' disabled state coupling — ok but if user double-clicks Google while sign-in is in-flight, two network ops race. Not blocking.",
+    "kit/[id].tsx: delete uses a window.confirm/Alert pattern; after DELETE the console shows a 404 Failed-to-load — this is a react-query refetch of /kits/{id} after invalidation, which is expected since the resource no longer exists. No user-visible error."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration3.py"
+  ],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "100% — manager kits CRUD UI + driller apply-kit + submit all green"},
+  "seed_data_creation": "Ephemeral: pytest creates 1 kit (TEST HQ weekly) via /kits then DELETEs it. UI run created 1 kit named 'TEST UI kit' then edited to 'TEST UI kit edited' and deleted it. 1 driller take-request (DB-HQ-001 x2 on RIG-01) was submitted and remains in PENDING (expected; cleanup not required by spec).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "testIDs for iter3: login-google-button (text 'Continue with Google'), more-kits, kits-screen, kits-new-button, kit-card-<id>, kit-editor-screen, kit-delete-button, kit-wh-<QLD|NSW>, kit-rig-<RIG-01..RIG-04>, kit-name-input, kit-search-input, kit-did-you-mean, kit-add-<SKU>, kit-item-<SKU>, kit-item-remove-<SKU>, kit-item-qty-<SKU>, kit-save-button, request-kits, request-kit-<id>, request-kit-apply-<id>. For Google-auth URL assertion, remember the Emergent provider 302s https://auth.emergentagent.com/?redirect=... → https://auth.emergentagent.com/oauth/?redirect=... — both are correct; assert on host 'auth.emergentagent.com' and the redirect query, not the exact '/' path. Playwright caveat remains: don't page.goto() deep links after login; navigate via UI (Home tiles or More tab). The pre-seeded 'HQ weekly' kit on RIG-01 QLD is required for the driller apply-kit flow — if a prior iteration deleted it, re-seed via /kits POST as qld manager with name='HQ weekly', rig_number='RIG-01', warehouse_id='QLD', items=[{product_id:<DB-HQ-001 id>, qty:2}].",
+  "rca_of_issue": "N/A — no bugs."
+}

@@ -41,6 +41,7 @@ export default function NewRequest() {
   const clientRef = useRef(uid());
   const drillers = useApi<any[]>("/drillers");
   const rigs = useApi<any[]>("/rigs");
+  const kits = useApi<any[]>(rig ? `/kits?rig=${encodeURIComponent(rig)}&warehouse_id=${wh}` : null);
   const results = useApi<any[]>(search.trim().length >= 2 ? `/products?warehouse_id=${wh}&q=${encodeURIComponent(search.trim())}` : null);
 
   useEffect(() => {
@@ -61,6 +62,22 @@ export default function NewRequest() {
     if (lines.some((l) => l.product_id === prod.id && l.bin_id === loc.bin_id)) return toast("Already in this request", "info");
     setLines([...lines, { product_id: prod.id, sku: prod.sku, name: prod.name, unit: prod.unit, bin_id: loc.bin_id, bin_code: loc.bin_code, qty: 1, avail: loc.qty }]);
     setSearch("");
+  };
+
+  const applyKit = (k: any) => {
+    const next = [...lines];
+    const skipped: string[] = [];
+    for (const it of k.items) {
+      if (!it.bin_id || it.avail <= 0) { skipped.push(it.sku); continue; }
+      const qty = Math.min(it.qty, it.avail);
+      if (qty < it.qty) skipped.push(`${it.sku} (${qty}/${it.qty})`);
+      const i = next.findIndex((l) => l.product_id === it.product_id && l.bin_id === it.bin_id);
+      const line = { product_id: it.product_id, sku: it.sku, name: it.name, unit: it.unit, bin_id: it.bin_id, bin_code: it.bin_code, qty, avail: it.avail };
+      if (i >= 0) next[i] = line; else next.push(line);
+    }
+    setLines(next);
+    if (!notes) setNotes(`Kit: ${k.name}`);
+    toast(skipped.length ? `Kit added · short: ${skipped.join(", ")}` : `${k.name} added`, skipped.length ? "info" : "success");
   };
 
   const submit = async () => {
@@ -119,6 +136,23 @@ export default function NewRequest() {
             <ChipRow testIDPrefix="request-rig" value={rig} onChange={setRig} options={(rigs.data || []).map((r) => ({ label: r.number, value: r.number }))} />
           </View>
         </View>
+
+        {type === "take" && !!rig && (kits.data || []).length > 0 && (
+          <View style={s.section} testID="request-kits">
+            <Label>{rig} kits</Label>
+            {(kits.data || []).map((k) => (
+              <Card key={k.id} testID={`request-kit-${k.id}`} style={{ gap: spacing.sm, borderColor: colors.brandSecondary }}>
+                <Row style={{ justifyContent: "space-between" }}>
+                  <View style={{ flex: 1 }}>
+                    <Body style={{ color: colors.onSurface, fontWeight: "800" }}>{k.name}</Body>
+                    <Label>{k.items.length} items{k.short ? ` · ${k.short} short` : ""}</Label>
+                  </View>
+                  <Button testID={`request-kit-apply-${k.id}`} title="Add kit" icon="package-variant-plus" onPress={() => applyKit(k)} />
+                </Row>
+              </Card>
+            ))}
+          </View>
+        )}
 
         <View style={s.section}>
           <Label>Items ({lines.length})</Label>

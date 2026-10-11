@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -31,13 +31,29 @@ export default function Login() {
   const s = useStyles();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { login } = useAuth();
+  const { login, loginWithGoogle, user } = useAuth();
   const toast = useToast();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [gBusy, setGBusy] = useState(false);
+
+  useEffect(() => {
+    if (user) router.replace("/(tabs)");
+  }, [user, router]);
+
+  const google = async () => {
+    setGBusy(true);
+    try {
+      await loginWithGoogle();
+    } catch (e: any) {
+      toast(e.message || "Google sign-in failed", "error");
+    } finally {
+      setGBusy(false);
+    }
+  };
 
   const submit = async () => {
     if (!email || !pw) return toast("Enter email and password", "error");
@@ -74,6 +90,12 @@ export default function Login() {
             </Pressable>
           </View>
           <Button testID="login-submit-button" title="Sign in" icon="login" large loading={busy} onPress={submit} />
+          <Row style={{ gap: spacing.md }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+            <Label>or</Label>
+            <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+          </Row>
+          <Button testID="login-google-button" title="Continue with Google" icon="google" variant="secondary" loading={gBusy} onPress={google} />
           <Label style={{ marginTop: spacing.sm }}>Demo accounts</Label>
           <Row>
             {DEMO.map((d) => (
