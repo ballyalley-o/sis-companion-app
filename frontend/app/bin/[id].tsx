@@ -1,14 +1,15 @@
 import { ScrollView, View } from "react-native";
-import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { isStaff, useAuth } from "@/src/auth";
+import { BinLabel } from "@/src/BinLabel";
 import { useApi } from "@/src/hooks";
-import { Body, Button, Card, EmptyState, ErrorState, Header, Label, Loading, Mono, Row } from "@/src/ui";
-import { makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { printLabels } from "@/src/label";
+import { Body, Button, Card, EmptyState, ErrorState, Header, Label, Loading, Mono, Row, useToast } from "@/src/ui";
+import { makeStyles, spacing, useTheme } from "@/src/theme";
 
 const useStyles = makeStyles((c) => ({
   root: { flex: 1, backgroundColor: c.surface },
-  qr: { width: 96, height: 96, borderRadius: radius.sm, backgroundColor: c.surfaceInverse },
 }));
 
 export default function BinDetail() {
@@ -16,6 +17,8 @@ export default function BinDetail() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const toast = useToast();
+  const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const q = useApi<any>(`/bins/${id}`);
   const qr = useApi<any>(q.data ? `/qr?payload=${encodeURIComponent(q.data.qr_payload)}` : null);
@@ -29,16 +32,16 @@ export default function BinDetail() {
       <Header title={b ? `Bin ${b.code}` : "Bin"} subtitle={b ? `${b.warehouse_id} · ${b.zone || ""}` : undefined} />
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : b && (
         <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: insets.bottom + spacing.xl }}>
-          <Card>
+          <BinLabel testID="bin-label-preview" code={b.code} title={b.title} qr={qr.data?.data_uri} />
+          <Label>{b.description} · {b.items.length} SKU line(s) · sticker 100×50mm</Label>
+          {isStaff(user) && (
             <Row>
-              {qr.data && <Image source={{ uri: qr.data.data_uri }} style={s.qr} contentFit="contain" />}
-              <View style={{ flex: 1, gap: 4 }}>
-                <Mono style={{ fontSize: 26 }}>{b.code}</Mono>
-                <Body>{b.description}</Body>
-                <Label>{b.items.length} SKU line(s)</Label>
-              </View>
+              <Button testID="bin-print-label" title="Print" icon="printer" variant="secondary" style={{ flex: 1 }}
+                onPress={() => qr.data && printLabels([{ code: b.code, title: b.title, data_uri: qr.data.data_uri }]).catch((e) => toast(e.message, "error"))} />
+              <Button testID="bin-receive" title="Receive" icon="truck-check" variant="success" style={{ flex: 1 }}
+                onPress={() => router.push({ pathname: "/receive", params: { wh: b.warehouse_id, bin_id: b.id } })} />
             </Row>
-          </Card>
+          )}
           {b.items.length === 0 && <EmptyState icon="package-variant" title="Bin is empty" />}
           {b.items.map((it: any) => (
             <Card key={it.product_id} testID={`bin-item-${it.sku}`} style={{ gap: spacing.md }}>

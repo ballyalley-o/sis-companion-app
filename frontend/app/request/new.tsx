@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, uid } from "@/src/api";
 import { useAuth } from "@/src/auth";
 import { useApi } from "@/src/hooks";
+import { CommonItems, DidYouMean } from "@/src/suggest";
 import { Body, Button, Card, ChipRow, Field, Header, Icon, IconButton, Label, Mono, Row, Stepper, useToast } from "@/src/ui";
 import { makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
@@ -135,7 +136,16 @@ export default function NewRequest() {
                 onChange={(n) => setLines(lines.map((x, j) => (j === i ? { ...x, qty: n } : x)))} />
             </Card>
           ))}
+          {!search && (
+            <CommonItems wh={wh} rig={rig || undefined} onPick={(prod) => {
+              const locs = (prod.locations || []).filter((l: any) => l.warehouse_id === wh);
+              const loc = type === "take" ? [...locs].sort((a: any, b: any) => b.qty - a.qty)[0] : locs[0];
+              if (!loc || (type === "take" && loc.qty <= 0)) return toast(`No ${prod.sku} on hand in ${wh}`, "error");
+              addLine(prod, loc);
+            }} />
+          )}
           <Field testID="request-add-item-search" value={search} onChangeText={setSearch} placeholder="Add item: search SKU or name" autoCapitalize="characters" />
+          <DidYouMean q={search} wh={wh} show={!results.isLoading && (results.data?.length ?? 0) < 2} onPick={(t) => setSearch(t)} testID="request-did-you-mean" />
           {(results.data || []).map((prod) => (
             <View key={prod.id} style={{ gap: spacing.xs }}>
               <Body style={{ color: colors.onSurface, fontWeight: "700" }}>{prod.sku} · {prod.name}</Body>

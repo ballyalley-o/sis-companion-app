@@ -7,6 +7,8 @@ from typing import List, Literal, Optional
 
 import base64
 import io
+import re
+from difflib import SequenceMatcher, get_close_matches
 
 import bcrypt
 import jwt
@@ -294,6 +296,60 @@ async def list_products(q: str = "", warehouse_id: Optional[str] = None, user=De
     return [await product_with_stock(p, wh) for p in prods]
 
 
+def _vocab(p):
+    return set(re.findall(r"[a-z0-9]+", f"{p['sku']} {p['name']} {p.get('description', '')}".lower())) | {p["sku"].lower()}
+
+
+@api.get("/products/suggest")
+async def suggest_products(q: str, warehouse_id: Optional[str] = None, user=Depends(current_user)):
+    """Spelling helper: fuzzy matches + a corrected query (e.g. 'bentonit' -> 'bentonite')."""
+    toks = [t for t in re.findall(r"[a-z0-9]+", q.lower()) if t]
+    if not toks:
+        return {"corrected": None, "items": []}
+    prods = await db.products.find({}, NOPROJ).to_list(5000)
+    vocab = set()
+    for p in prods:
+        vocab |= _vocab(p)
+    vocab_l = sorted(vocab)
+    fixed = [(get_close_matches(t, vocab_l, n=1, cutoff=0.6) or [t])[0] for t in toks]
+    corrected = " ".join(fixed)
+    scored = []
+    for p in prods:
+        words = _vocab(p)
+        per = [max(SequenceMatcher(None, t, w).ratio() for w in words) for t in toks]
+        score = sum(per) / len(per)
+        if score >= 0.6:
+            scored.append((score, p))
+    scored.sort(key=lambda x: -x[0])
+    wh = scope_wh(user, warehouse_id)
+    items = [{**(await product_with_stock(p, wh)), "score": round(sc, 2)} for sc, p in scored[:5]]
+    return {"corrected": corrected if corrected != " ".join(toks) else None, "items": items}
+
+
+@api.get("/products/common")
+async def common_products(warehouse_id: Optional[str] = None, rig: Optional[str] = None, kind: str = "request",
+                          user=Depends(current_user)):
+    """Most frequently requested (or received) items, optionally for a rig; padded with low-stock/seed items."""
+    wh = scope_wh(user, warehouse_id)
+    since = (now() - timedelta(days=120)).isoformat()
+    coll = db.receipts if kind == "receive" else db.stock_requests
+    match = {"created_at": {"$gte": since}, **({"warehouse_id": wh} if wh else {})}
+    if kind != "receive":
+        match["status"] = {"$in": ["pending", "approved"]}
+        if rig:
+            match["rig_number"] = rig
+    rows = await coll.aggregate([{"$match": match}, {"$unwind": "$items"},
+                                 {"$group": {"_id": "$items.product_id", "uses": {"$sum": 1}, "qty": {"$sum": "$items.qty"}}},
+                                 {"$sort": {"uses": -1, "qty": -1}}, {"$limit": 8}]).to_list(8)
+    ids = [r["_id"] for r in rows]
+    uses = {r["_id"]: r["uses"] for r in rows}
+    if len(ids) < 6:
+        for p in await db.products.find({"id": {"$nin": ids}}, NOPROJ).sort("sku", 1).to_list(6 - len(ids)):
+            ids.append(p["id"])
+    prods = {p["id"]: p for p in await db.products.find({"id": {"$in": ids}}, NOPROJ).to_list(50)}
+    return [{**(await product_with_stock(prods[i], wh)), "uses": uses.get(i, 0)} for i in ids if i in prods]
+
+
 @api.get("/products/{pid}")
 async def get_product(pid: str, user=Depends(current_user)):
     p = await db.products.find_one({"id": pid}, NOPROJ)
@@ -336,6 +392,16 @@ class BinIn(BaseModel):
     warehouse_id: str
     zone: str = ""
     description: str = ""
+    name: str = ""
+
+
+def bin_title(b):
+    if b.get("name"):
+        return b["name"].upper()
+    parts = b["code"].split("-")
+    seg = parts[-1]
+    m = re.match(r"^[Bb](\d+)$", seg) if len(parts) >= 3 else None
+    return f"BIN {m.group(1) if m else seg}".upper()
 
 
 @api.post("/bins")
@@ -344,7 +410,8 @@ async def create_bin(body: BinIn, user=Depends(roles("admin", "manager"))):
     code = body.code.strip().upper()
     if await db.bins.find_one({"code": code}):
         raise HTTPException(409, "Bin code already exists")
-    doc = {"id": nid(), "code": code, "warehouse_id": body.warehouse_id, "zone": body.zone, "description": body.description, "active": True}
+    doc = {"id": nid(), "code": code, "warehouse_id": body.warehouse_id, "zone": body.zone, "description": body.description,
+           "name": body.name.strip(), "active": True}
     await db.bins.insert_one(dict(doc))
     await audit(user, "bin.create", "bin", doc["id"], {"code": code})
     return doc
@@ -373,7 +440,7 @@ async def get_bin(bid: str, user=Depends(current_user)):
     items = [{"product_id": r["product_id"], "sku": prods[r["product_id"]]["sku"], "name": prods[r["product_id"]]["name"],
               "description": prods[r["product_id"]]["description"], "unit": prods[r["product_id"]]["unit"], "qty": r["qty"]}
              for r in rows if r["product_id"] in prods]
-    return {**b, "items": sorted(items, key=lambda x: x["sku"]), "qr_payload": f"BIN:{b['code']}"}
+    return {**b, "title": bin_title(b), "items": sorted(items, key=lambda x: x["sku"]), "qr_payload": f"BIN:{b['code']}"}
 
 
 def qr_data_uri(payload: str) -> str:
@@ -395,7 +462,7 @@ async def bin_labels(warehouse_id: Optional[str] = None, ids: str = "", user=Dep
     if ids:
         filt["id"] = {"$in": ids.split(",")}
     bins = await db.bins.find(filt, NOPROJ).sort("code", 1).to_list(500)
-    return [{"id": b["id"], "code": b["code"], "warehouse_id": b["warehouse_id"], "zone": b.get("zone", ""),
+    return [{"id": b["id"], "code": b["code"], "title": bin_title(b), "warehouse_id": b["warehouse_id"], "zone": b.get("zone", ""),
              "description": b.get("description", ""), "data_uri": qr_data_uri(f"BIN:{b['code']}")} for b in bins]
 
 
@@ -562,6 +629,53 @@ async def cancel_request(rid: str, user=Depends(current_user)):
         raise HTTPException(409, "Only your own pending requests can be cancelled")
     await audit(user, "request.cancel", "stock_request", rid, {})
     return {"ok": True}
+
+
+# ---------------------------------------------------------------- receiving (goods in)
+class ReceiptIn(BaseModel):
+    warehouse_id: str
+    supplier: str = ""
+    reference: str = ""
+    notes: str = ""
+    items: List[ReqItem] = Field(min_length=1)
+    client_ref: str
+
+
+@api.post("/receipts")
+async def create_receipt(body: ReceiptIn, user=Depends(roles("manager", "admin"))):
+    ensure_wh_access(user, body.warehouse_id)
+    existing = await db.receipts.find_one({"client_ref": body.client_ref}, NOPROJ)
+    if existing:
+        return existing
+    items = []
+    for it in body.items:
+        p = await db.products.find_one({"id": it.product_id}, NOPROJ)
+        b = await db.bins.find_one({"id": it.bin_id, "warehouse_id": body.warehouse_id, "active": True}, NOPROJ)
+        if not p or not b:
+            raise HTTPException(400, "Invalid product or bin for this warehouse")
+        items.append({"product_id": p["id"], "sku": p["sku"], "name": p["name"], "unit": p["unit"],
+                      "bin_id": b["id"], "bin_code": b["code"], "qty": it.qty})
+    rid = nid()
+    number = f"GR-{now().strftime('%y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
+    res = await zoho_adjust(user, f"Goods received {number}{f' ({body.reference})' if body.reference else ''}", body.warehouse_id,
+                            [{"product_id": it["product_id"], "sku": it["sku"], "delta": it["qty"]} for it in items], {"type": "receipt", "id": rid})
+    for it in items:
+        await apply_stock(body.warehouse_id, it["bin_id"], it["product_id"], it["qty"], mtype="receive",
+                          ref={"type": "receipt", "id": rid, "number": number}, user=user, note=body.reference or body.supplier)
+    doc = {"id": rid, "number": number, "warehouse_id": body.warehouse_id, "supplier": body.supplier, "reference": body.reference,
+           "notes": body.notes, "items": items, "received_by": user["name"], "created_at": iso(), "client_ref": body.client_ref,
+           "zoho_txn_id": res["txn_id"], "zoho_mode": res["mode"]}
+    await db.receipts.insert_one(dict(doc))
+    await audit(user, "receipt.create", "receipt", rid, {"number": number, "lines": len(items), "zoho_txn_id": res["txn_id"]})
+    await notify(f"Stock received {number}", f"{len(items)} line(s) into {body.warehouse_id}{f' from {body.supplier}' if body.supplier else ''}",
+                 kind="success", roles_=["manager", "admin"], warehouse_id=body.warehouse_id, ref={"type": "receipt", "id": rid})
+    return doc
+
+
+@api.get("/receipts")
+async def list_receipts(warehouse_id: Optional[str] = None, user=Depends(roles("manager", "admin"))):
+    wh = scope_wh(user, warehouse_id)
+    return await db.receipts.find({"warehouse_id": wh} if wh else {}, NOPROJ).sort("created_at", -1).to_list(200)
 
 
 # ---------------------------------------------------------------- stock counts
@@ -985,6 +1099,7 @@ app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=["*"], 
 async def startup():
     await db.users.create_index("email", unique=True)
     await db.stock_requests.create_index("client_ref", unique=True)
+    await db.receipts.create_index("client_ref", unique=True)
     await db.stock.create_index([("product_id", 1), ("bin_id", 1)], unique=True)
     await seed_mod.seed(db)
     try:

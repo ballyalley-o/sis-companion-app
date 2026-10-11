@@ -14,6 +14,13 @@ Zoho MOCKED for now · JWT email/password roles (+ Google login requested, defer
 ## Implemented (2026-06)
 All features above end-to-end; testing iteration_1: backend 24/24, frontend critical flows green.
 
+## Iteration 2 (2026-06)
+- Bin stickers 100×50mm (@page size, one per page, light bg, title "BIN 22", red first code segment, QR right) + in-app preview; optional bin label title
+- Receiving stock (goods in): /receive screen, POST/GET /api/receipts, Zoho mock adjustment, movement "receive", Reports → Receipts
+- Common items (per warehouse/rig, by usage) in Stock tab, new request, receive
+- "Did you mean" spelling helper (/api/products/suggest, difflib)
+- Tests: iteration_2 backend 15/15, frontend verified
+
 ## Backlog
 - P0: Real Zoho credentials → set ZOHO_MODE=live, item ID mapping/sync of items from Zoho
 - P1: Emergent Google social login; push notifications (needs google-services.json + build)

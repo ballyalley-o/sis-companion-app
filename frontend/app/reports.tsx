@@ -6,9 +6,9 @@ import { fmtDate, useApi } from "@/src/hooks";
 import { Body, Card, ChipRow, EmptyState, ErrorState, Header, Label, Loading, Mono, Row, StatusPill } from "@/src/ui";
 import { makeStyles, spacing, useTheme } from "@/src/theme";
 
-type Tab = "low" | "disc" | "moves" | "audit";
+type Tab = "low" | "disc" | "moves" | "audit" | "receipts";
 const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface }, chips: { borderBottomWidth: 1, borderBottomColor: c.divider } }));
-const PATH: Record<Tab, string> = { low: "/reports/low-stock", disc: "/reports/discrepancies", moves: "/movements", audit: "/audit" };
+const PATH: Record<Tab, string> = { low: "/reports/low-stock", disc: "/reports/discrepancies", moves: "/movements", audit: "/audit", receipts: "/receipts" };
 
 export default function Reports() {
   const s = useStyles();
@@ -19,9 +19,17 @@ export default function Reports() {
   const [tab, setTab] = useState<Tab>("low");
   const q = useApi<any[]>(PATH[tab]);
   const opts = [{ label: "Low stock", value: "low" as Tab }, { label: "Movements", value: "moves" as Tab },
-    ...(staff ? [{ label: "Discrepancies", value: "disc" as Tab }, { label: "Audit trail", value: "audit" as Tab }] : [])];
+    ...(staff ? [{ label: "Receipts", value: "receipts" as Tab }, { label: "Discrepancies", value: "disc" as Tab }, { label: "Audit trail", value: "audit" as Tab }] : [])];
 
   const render = ({ item: x }: { item: any }) => {
+    if (tab === "receipts") return (
+      <Card testID={`report-receipt-${x.number}`} style={{ gap: 4 }}>
+        <Row style={{ justifyContent: "space-between" }}><Mono>{x.number}</Mono><StatusPill status="return" label={`+${x.items.reduce((a: number, i: any) => a + i.qty, 0)}`} /></Row>
+        <Body style={{ color: colors.onSurface }}>{x.supplier || "Supplier n/a"}{x.reference ? ` · ${x.reference}` : ""}</Body>
+        <Body style={{ fontSize: 13 }}>{x.items.map((i: any) => `${i.sku}×${i.qty} → ${i.bin_code}`).join(", ")}</Body>
+        <Label>{x.warehouse_id} · {fmtDate(x.created_at)} · {x.received_by} · {x.zoho_txn_id}</Label>
+      </Card>
+    );
     if (tab === "low") return (
       <Card testID={`report-low-${x.sku}-${x.warehouse_id}`}>
         <Row>

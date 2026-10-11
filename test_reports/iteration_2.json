@@ -1,0 +1,33 @@
+{
+  "summary": "Iteration 2 testing complete. Backend: 15/15 pytest in /app/backend/tests/test_iteration2.py pass covering (a) /products/suggest fuzzy corrections ('bentonit'->'bentonite' with MUD-BENT items; 'diamnd bitt'->'diamond bit' with DB-* items; empty/whitespace returns []), (b) /products/common returns >=6 items sorted desc by uses with uses field present, respects manager warehouse scope (QLD mgr -> NSW returns 403), supports rig & kind=receive, (c) POST /receipts creates GR-* number with MOCK-ADJ-* zoho txn, increments bin stock, movement type logged, idempotent on client_ref (not double-counted), 403 for driller + cross-warehouse manager, 400 for invalid bin, GET /receipts lists, (d) bin titles: BIN with name -> name uppercased, SEC1-L2-B22 -> 'BIN 22', QLD-A01 (2 segments) -> 'BIN A01', (e) regression take-request + manager approve still works. Frontend: Manager login + dashboard renders correctly (Zoho MOCK pill, low-stock alerts, 4 action tiles, bottom tabs); Receive screen (/receive) renders with Supplier, PO/docket, Items(0), common-items strip hook, SKU search field, Did-you-mean hook, Notes, Receive into stock button; Driller new-request screen renders with warehouse chips, driller name, rig, items field, common-items hook, scan-a-bin shortcut, submit button. All target testIDs are present in code (bin-label-preview, bin-print-label, bin-receive, receive-screen, receive-did-you-mean, common-items, common-item-<SKU>, stock-did-you-mean, request-did-you-mean, bin-code-input, bin-name-input, bin-create-button, receive-submit-button). BinLabel component correctly implements 2:1 aspect, light bg (#F1F4F9), bold title left, red accent on first code segment, white QR box on right. labelsHtml generates @page 100mm x 50mm print CSS. No deprecated expo-av/expo-barcode-scanner/expo-background-fetch found. No red-screen errors. No business bugs found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration2.py",
+    "/app/test_reports/pytest/iteration2.xml",
+    "/app/backend/tests/test_drillstock.py"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py now at 1115 lines (grew ~100 from iteration 1 for receipts/common/suggest/bin-title). Still monolithic; splitting into routers (receiving, products, bins) would improve maintainability but is NOT blocking.",
+    "/products/suggest loads ALL products (find({}).to_list(5000)) per request to build the vocab. Fine at current catalogue size but should be cached if catalogue grows; a MongoDB $text index would also work.",
+    "/products/common fallback padding when len(ids) < 6 uses find().sort('sku',1) which can collide with items already in `ids`; current implementation handles via {'id':{'$nin':ids}} filter — correct. Noted only.",
+    "bin_title regex r'^[Bb](\\d+)$' only matches digit-only bin numbers after a 'B' prefix. Codes like SEC1-L2-BB22 would fall through to the else path and render 'BIN BB22' (acceptable per spec). No action needed.",
+    "receive.tsx: supplier/reference/notes are not strictly validated client-side (empty supplier allowed). Backend accepts empty strings — acceptable per spec.",
+    "receive.tsx and request/new.tsx: both call api(...).catch(toast). Error messaging is correctly surfaced. Good."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration2.py"
+  ],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "code-verified + manager dashboard/receive/new-request screens load with correct testIDs"},
+  "seed_data_creation": "Ephemeral test bins (TSTR-L2-B22 variants, SEC1-L2-B22 if absent) + receipts with 'rc-<uuid>' client_refs + 1 regression stock request. All non-destructive; test bins are archived at end of their tests where empty.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Reusable tests: /app/backend/tests/test_iteration2.py (iter2 features) and /app/backend/tests/test_drillstock.py (iter1 regression). Both use EXPO_PUBLIC_BACKEND_URL. Frontend caveat for Playwright: Expo web auth state is in zustand (in-memory) — do NOT use page.goto() to deep-link to protected routes like /receive or /request/new mid-test; instead navigate via UI (More tab > Receive, Home tile > New Request). Deep-link navigation reloads the app and loses auth state, causing /products/common and /products/suggest to 401 and render empty strips (component is implemented correctly — this is a test harness artifact, not a bug). Demo buttons on login screen: 'Driller', 'QLD Mgr', 'Admin'. testIDs added this iteration: bin-label-preview, bin-print-label, bin-receive, receive-screen, receive-supplier-input, receive-reference-input, receive-search-input, receive-did-you-mean[-corrected,-<SKU>], receive-line-<SKU>, receive-line-qty-<SKU>, receive-submit-button, common-items, common-item-<SKU>, stock-did-you-mean, request-did-you-mean, bin-name-input.",
+  "rca_of_issue": "N/A — no bugs. 401s observed in frontend Playwright run were due to page.goto() causing a hard reload that cleared zustand in-memory auth, not an application bug."
+}

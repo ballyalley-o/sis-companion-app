@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/src/auth";
 import { useApi } from "@/src/hooks";
 import { usesNativeTabs } from "@/src/navigation";
+import { CommonItems, DidYouMean } from "@/src/suggest";
 import { Body, Card, ChipRow, EmptyState, ErrorState, H1, Icon, IconButton, Label, Loading, Mono, Row, StatusPill } from "@/src/ui";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
@@ -56,6 +57,15 @@ export default function Stock() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: bottomChrome + spacing.xl }}
           refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={res.isRefetching} onRefresh={res.refetch} />}
+          ListHeaderComponent={
+            !q ? (
+              <View style={{ marginBottom: spacing.sm }}>
+                <CommonItems wh={effWh} onPick={(p) => router.push({ pathname: "/product/[id]", params: { id: p.id, wh: effWh } })} />
+              </View>
+            ) : (res.data?.length ?? 0) < 3 ? (
+              <DidYouMean q={q} wh={effWh} show onPick={(t) => setText(t)} testID="stock-did-you-mean" />
+            ) : null
+          }
           ListEmptyComponent={<EmptyState icon="package-variant-remove" title="No products found" text="Try another SKU or keyword" />}
           renderItem={({ item: p }) => {
             const total = p.totals[effWh] || 0;

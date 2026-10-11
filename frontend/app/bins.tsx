@@ -1,29 +1,16 @@
 import { useState } from "react";
 import { FlatList, RefreshControl, View } from "react-native";
-import * as Print from "expo-print";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
+import { printLabels } from "@/src/label";
 import { useAuth } from "@/src/auth";
 import { useApi } from "@/src/hooks";
 import { Body, Button, Card, ChipRow, EmptyState, ErrorState, Field, H3, Header, IconButton, Label, Loading, Mono, Row, Sheet, useToast } from "@/src/ui";
 import { makeStyles, spacing, useTheme } from "@/src/theme";
 
 const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface }, chips: { borderBottomWidth: 1, borderBottomColor: c.divider } }));
-
-function labelsHtml(labels: any[]) {
-  // Printed labels are always black-on-white for scanner contrast.
-  const cells = labels.map((l) => `
-    <div class="l"><img src="${l.data_uri}"/><div><div class="c">${l.code}</div><div class="w">${l.warehouse_id} · ${l.zone}</div><div class="d">${l.description}</div></div></div>`).join("");
-  return `<html><head><style>
-    body{font-family:Arial,Helvetica,sans-serif;margin:12px}
-    .g{display:flex;flex-wrap:wrap;gap:10px}
-    .l{width:46%;border:3px solid #000;border-radius:8px;padding:8px;display:flex;align-items:center;gap:10px;page-break-inside:avoid}
-    img{width:120px;height:120px}
-    .c{font-size:28px;font-weight:900;letter-spacing:1px}.w{font-size:14px;font-weight:700}.d{font-size:12px}
-  </style></head><body><div class="g">${cells}</div></body></html>`;
-}
 
 export default function Bins() {
   const s = useStyles();
@@ -39,6 +26,7 @@ export default function Bins() {
   const [code, setCode] = useState("");
   const [zone, setZone] = useState("");
   const [desc, setDesc] = useState("");
+  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [printing, setPrinting] = useState(false);
 
@@ -46,7 +34,7 @@ export default function Bins() {
     setPrinting(true);
     try {
       const labels = await api<any[]>(`/bins-labels?warehouse_id=${wh}${ids ? `&ids=${ids}` : ""}`);
-      await Print.printAsync({ html: labelsHtml(labels) });
+      await printLabels(labels);
     } catch (e: any) {
       toast(e.message || "Print failed", "error");
     } finally {
@@ -57,9 +45,9 @@ export default function Bins() {
     if (!code.trim()) return toast("Enter a bin code", "error");
     setBusy(true);
     try {
-      await api("/bins", { method: "POST", body: { code, warehouse_id: wh, zone, description: desc } });
+      await api("/bins", { method: "POST", body: { code, warehouse_id: wh, zone, description: desc, name } });
       toast(`Bin ${code.toUpperCase()} created`);
-      setOpen(false); setCode(""); setZone(""); setDesc("");
+      setOpen(false); setCode(""); setZone(""); setDesc(""); setName("");
       qc.invalidateQueries();
     } catch (e: any) {
       toast(e.message, "error");
@@ -89,7 +77,7 @@ export default function Bins() {
         <FlatList data={q.data} keyExtractor={(b) => b.id}
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: insets.bottom + spacing.xl }}
           refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={q.refetch} />}
-          ListHeaderComponent={<Button testID="bins-print-all" title={`Print all ${wh} labels`} icon="printer" loading={printing} onPress={() => print()} />}
+          ListHeaderComponent={<Button testID="bins-print-all" title={`Print all ${wh} labels (100×50mm)`} icon="printer" loading={printing} onPress={() => print()} />}
           ListEmptyComponent={<EmptyState icon="grid-off" title="No bins" />}
           renderItem={({ item: b }) => (
             <Card testID={`bin-card-${b.code}`} onPress={() => router.push({ pathname: "/bin/[id]", params: { id: b.id } })}>
@@ -107,7 +95,8 @@ export default function Bins() {
       )}
       <Sheet visible={open} onClose={() => setOpen(false)} testID="new-bin-sheet">
         <H3>New bin · {wh}</H3>
-        <Field testID="bin-code-input" label="Bin code" value={code} onChangeText={setCode} autoCapitalize="characters" placeholder={`${wh}-D01`} />
+        <Field testID="bin-code-input" label="Bin code" value={code} onChangeText={setCode} autoCapitalize="characters" placeholder="SEC1-L2-B22" />
+        <Field testID="bin-name-input" label="Label title (optional)" value={name} onChangeText={setName} autoCapitalize="characters" placeholder="BIN 22" />
         <Field testID="bin-zone-input" label="Zone" value={zone} onChangeText={setZone} placeholder="Aisle D" />
         <Field testID="bin-desc-input" label="Description" value={desc} onChangeText={setDesc} placeholder="Pallet racking level 1" />
         <Button testID="bin-create-button" title="Create bin" icon="plus" loading={busy} onPress={create} />
