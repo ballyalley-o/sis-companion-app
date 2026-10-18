@@ -84,9 +84,9 @@ def _access_token(s: dict) -> str:
     return data["access_token"]
 
 
-def call(s: dict, method: str, path: str, params=None, json=None) -> dict:
+def call(s: dict, method: str, path: str, params=None, json=None, with_org: bool = True) -> dict:
     """Authenticated request with retry/backoff on 429/5xx."""
-    p = {**(params or {}), "organization_id": s.get("organization_id", "")}
+    p = {**(params or {}), **({"organization_id": s.get("organization_id", "")} if with_org else {})}
     last = None
     for attempt in range(4):
         r = requests.request(method, f"{urls(s)[1]}{path}", params=p, json=json, timeout=45,
@@ -103,6 +103,11 @@ def call(s: dict, method: str, path: str, params=None, json=None) -> dict:
             raise ZohoError(f"Zoho {r.status_code}: {data.get('message', r.text[:300])}")
         return data
     raise ZohoError(f"Zoho unavailable ({last.status_code if last else 'n/a'}), please retry")
+
+
+def list_organizations(s: dict):
+    d = call(s, "GET", "/organizations", with_org=False)
+    return [{"id": str(o["organization_id"]), "name": o.get("name")} for o in d.get("organizations", [])]
 
 
 def list_locations(s: dict):

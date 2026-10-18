@@ -68,6 +68,7 @@ export default function Zoho() {
       if (r.auth_url) {
         await WebBrowser.openBrowserAsync(r.auth_url);
         await q.refetch();
+        setF(null); // re-seed form with auto-detected org / data center
       } else toast("Connected in mock mode — transactions are simulated");
       qc.invalidateQueries();
     } catch (e: any) { toast(e.message, "error"); } finally { setBusy(null); }
@@ -121,7 +122,14 @@ export default function Zoho() {
           <H3>OAuth credentials</H3>
           <Field testID="zoho-client-id-input" label="Client ID" value={f.client_id} onChangeText={set("client_id")} autoCapitalize="none" placeholder="1000.XXXX" />
           <Field testID="zoho-client-secret-input" label={`Client secret ${f.client_secret_masked ? `(saved ${f.client_secret_masked})` : ""}`} value={f.client_secret} onChangeText={set("client_secret")} secureTextEntry autoCapitalize="none" placeholder="Leave blank to keep current" />
-          <Field testID="zoho-org-id-input" label="Organization ID" value={f.organization_id} onChangeText={set("organization_id")} keyboardType="number-pad" />
+          <Field testID="zoho-org-id-input" label="Organization ID (auto-filled after connecting)" value={f.organization_id} onChangeText={set("organization_id")} keyboardType="number-pad" />
+          {(q.data?.organizations || []).length > 1 && (
+            <Row style={{ flexWrap: "wrap", gap: spacing.sm }}>
+              {q.data.organizations.map((o: any) => (
+                <Chip key={o.id} testID={`zoho-org-${o.id}`} label={o.name} selected={f.organization_id === o.id} onPress={() => setF({ ...f, organization_id: o.id })} />
+              ))}
+            </Row>
+          )}
           <Field testID="zoho-redirect-input" label="Redirect URI" value={f.redirect_uri} onChangeText={set("redirect_uri")} autoCapitalize="none" placeholder={`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/zoho/callback`} />
           <View style={{ gap: spacing.sm }}>
             <Label>Data center</Label>

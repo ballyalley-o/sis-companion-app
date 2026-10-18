@@ -1161,6 +1161,7 @@ async def get_zoho(user=Depends(roles("admin"))):
             "connected": bool(s.get("refresh_token")) if s.get("mode") == "live" else bool(s.get("connected")),
             "connected_at": s.get("connected_at"), "has_refresh_token": bool(s.get("refresh_token")),
             "location_kind": s.get("location_kind", "location"), "last_import": s.get("last_import"),
+            "organizations": s.get("organizations") or [],
             "mode": "live" if zoho.is_live(s) else "mock"}
 
 
@@ -1170,6 +1171,8 @@ async def save_zoho(body: ZohoSettingsIn, user=Depends(roles("admin"))):
     upd = {k: v.strip() if isinstance(v, str) else v for k, v in data.items() if k not in ("qld_warehouse_id", "nsw_warehouse_id", "client_secret")}
     if body.client_secret.strip():
         upd["client_secret"] = zoho.enc(body.client_secret.strip())
+    if not upd.get("organization_id"):
+        upd.pop("organization_id", None)  # never wipe an auto-detected org with a blank field
     await db.zoho_settings.update_one({"id": "default"}, {"$set": upd, "$setOnInsert": {"id": "default"}}, upsert=True)
     await db.warehouses.update_one({"id": "QLD"}, {"$set": {"zoho_warehouse_id": body.qld_warehouse_id.strip()}})
     await db.warehouses.update_one({"id": "NSW"}, {"$set": {"zoho_warehouse_id": body.nsw_warehouse_id.strip()}})
@@ -1181,7 +1184,7 @@ async def save_zoho(body: ZohoSettingsIn, user=Depends(roles("admin"))):
 async def connect_zoho(user=Depends(roles("admin"))):
     s = await zoho_settings()
     if s.get("mode") == "live":
-        missing = [k for k in ("client_id", "client_secret", "organization_id", "redirect_uri") if not s.get(k)]
+        missing = [k for k in ("client_id", "client_secret", "redirect_uri") if not s.get(k)]
         if missing:
             raise HTTPException(400, f"Save these first: {', '.join(missing)}")
         state = uuid.uuid4().hex
@@ -1202,7 +1205,8 @@ def _page(title, msg, ok=True):
 
 
 @api.get("/zoho/callback")
-async def zoho_callback(code: str = "", state: str = "", error: str = "", accounts_server: str = ""):
+async def zoho_callback(code: str = "", state: str = "", error: str = "",
+                        accounts_server: str = Query("", alias="accounts-server"), location: str = ""):
     s = await zoho_settings()
     if error:
         return _page("Zoho connection cancelled", error, ok=False)
@@ -1213,15 +1217,28 @@ async def zoho_callback(code: str = "", state: str = "", error: str = "", accoun
         tok = await run_in_threadpool(zoho.exchange_code, s, code, accounts_server if accounts_server in allowed else "")
     except zoho.ZohoError as e:
         return _page("Connection failed", str(e), ok=False)
-    await db.zoho_settings.update_one({"id": "default"}, {"$set": {
-        "refresh_token": zoho.enc(tok["refresh_token"]), "connected": True, "connected_at": iso(), "oauth_state": None}})
+    upd = {"refresh_token": zoho.enc(tok["refresh_token"]), "connected": True, "connected_at": iso(), "oauth_state": None}
+    dc = {"au": "com.au", "us": "com", "eu": "eu", "in": "in"}.get(location.lower())
+    if dc:
+        upd["data_center"] = dc  # Zoho tells us the account's real data center
+    await db.zoho_settings.update_one({"id": "default"}, {"$set": upd})
     s = await zoho_settings()
+    msg = "Next: map your QLD and NSW locations, then import items."
     try:
-        kind, _ = await run_in_threadpool(zoho.list_locations, s)
-        await db.zoho_settings.update_one({"id": "default"}, {"$set": {"location_kind": kind}})
+        orgs = await run_in_threadpool(zoho.list_organizations, s)
+        await db.zoho_settings.update_one({"id": "default"}, {"$set": {"organizations": orgs}})
+        if not s.get("organization_id") and len(orgs) == 1:
+            await db.zoho_settings.update_one({"id": "default"}, {"$set": {"organization_id": orgs[0]["id"]}})
+            msg = f"Organization “{orgs[0]['name']}” selected. " + msg
+        elif not s.get("organization_id") and len(orgs) > 1:
+            msg = "Pick your organization in the app, then map locations and import items."
+        s = await zoho_settings()
+        if s.get("organization_id"):
+            kind, _ = await run_in_threadpool(zoho.list_locations, s)
+            await db.zoho_settings.update_one({"id": "default"}, {"$set": {"location_kind": kind}})
     except zoho.ZohoError as e:
-        logger.warning("location probe failed: %s", e)
-    return _page("Zoho connected", "Next: map your QLD and NSW locations, then import items.")
+        logger.warning("post-connect probe failed: %s", e)
+    return _page("Zoho connected", msg)
 
 
 @api.post("/zoho/disconnect")
