@@ -17,7 +17,7 @@ import qrcode
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import Response
+from fastapi.responses import HTMLResponse, Response
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 from starlette.middleware.cors import CORSMiddleware
@@ -27,7 +27,7 @@ load_dotenv(ROOT_DIR / ".env")
 
 import seed as seed_mod  # noqa: E402
 import storage  # noqa: E402
-import zoho  # noqa: E402
+import zoho_api as zoho  # noqa: E402
 
 client = AsyncIOMotorClient(os.environ["MONGO_URL"])
 db = client[os.environ["DB_NAME"]]
@@ -208,7 +208,8 @@ async def zoho_adjust(user, reason, warehouse_id, lines, ref):
     log = {"id": nid(), "at": iso(), "reason": reason, "warehouse_id": warehouse_id, "ref": ref, "lines": zlines, "user_name": user["name"]}
     try:
         res = await run_in_threadpool(zoho.create_adjustment, settings, reason=reason,
-                                      warehouse_zoho_id=wh.get("zoho_warehouse_id", ""), lines=zlines)
+                                      warehouse_zoho_id=wh.get("zoho_warehouse_id", ""), lines=zlines,
+                                      reference=f"DS-{ref.get('type', '')[:3].upper()}-{ref.get('id', '')[:8]}")
         log.update({"status": "success", "txn_id": res["txn_id"], "mode": res["mode"]})
         await db.zoho_sync_log.insert_one(log)
         return res
@@ -1139,56 +1140,88 @@ class ZohoSettingsIn(BaseModel):
     redirect_uri: str = ""
     qld_warehouse_id: str = ""
     nsw_warehouse_id: str = ""
+    adjustment_account_id: str = ""
+    mode: Literal["mock", "live"] = "mock"
     auto_sync: bool = True
 
 
 def mask(s: str):
-    return (s[:4] + "•" * 8) if s else ""
+    return (s[:4] + "\u2022" * 8) if s else ""
 
 
 @api.get("/zoho/settings")
 async def get_zoho(user=Depends(roles("admin"))):
     s = await zoho_settings()
     whs = {w["id"]: w for w in await db.warehouses.find({}, NOPROJ).to_list(10)}
-    return {"client_id": s.get("client_id", ""), "client_secret_masked": mask(s.get("client_secret", "")),
+    return {"client_id": s.get("client_id", ""), "client_secret_masked": mask(zoho.dec(s.get("client_secret", ""))),
             "organization_id": s.get("organization_id", ""), "data_center": s.get("data_center", "com.au"),
             "redirect_uri": s.get("redirect_uri", ""), "auto_sync": s.get("auto_sync", True),
+            "adjustment_account_id": s.get("adjustment_account_id", ""), "selected_mode": s.get("mode", "mock"),
             "qld_warehouse_id": whs.get("QLD", {}).get("zoho_warehouse_id", ""), "nsw_warehouse_id": whs.get("NSW", {}).get("zoho_warehouse_id", ""),
-            "connected": bool(s.get("connected")), "connected_at": s.get("connected_at"),
-            "mode": "live" if zoho.is_live(s) else "mock", "env_mode": os.environ.get("ZOHO_MODE", "mock")}
+            "connected": bool(s.get("refresh_token")) if s.get("mode") == "live" else bool(s.get("connected")),
+            "connected_at": s.get("connected_at"), "has_refresh_token": bool(s.get("refresh_token")),
+            "location_kind": s.get("location_kind", "location"), "last_import": s.get("last_import"),
+            "mode": "live" if zoho.is_live(s) else "mock"}
 
 
 @api.put("/zoho/settings")
 async def save_zoho(body: ZohoSettingsIn, user=Depends(roles("admin"))):
     data = body.model_dump()
-    upd = {k: v for k, v in data.items() if k not in ("qld_warehouse_id", "nsw_warehouse_id", "client_secret")}
-    if body.client_secret:
-        upd["client_secret"] = body.client_secret
+    upd = {k: v.strip() if isinstance(v, str) else v for k, v in data.items() if k not in ("qld_warehouse_id", "nsw_warehouse_id", "client_secret")}
+    if body.client_secret.strip():
+        upd["client_secret"] = zoho.enc(body.client_secret.strip())
     await db.zoho_settings.update_one({"id": "default"}, {"$set": upd, "$setOnInsert": {"id": "default"}}, upsert=True)
-    await db.warehouses.update_one({"id": "QLD"}, {"$set": {"zoho_warehouse_id": body.qld_warehouse_id}})
-    await db.warehouses.update_one({"id": "NSW"}, {"$set": {"zoho_warehouse_id": body.nsw_warehouse_id}})
-    await audit(user, "zoho.settings", "zoho", "default", {"org": body.organization_id, "dc": body.data_center})
+    await db.warehouses.update_one({"id": "QLD"}, {"$set": {"zoho_warehouse_id": body.qld_warehouse_id.strip()}})
+    await db.warehouses.update_one({"id": "NSW"}, {"$set": {"zoho_warehouse_id": body.nsw_warehouse_id.strip()}})
+    await audit(user, "zoho.settings", "zoho", "default", {"org": body.organization_id, "dc": body.data_center, "mode": body.mode})
     return await get_zoho(user)
 
 
 @api.post("/zoho/connect")
 async def connect_zoho(user=Depends(roles("admin"))):
     s = await zoho_settings()
-    if os.environ.get("ZOHO_MODE") == "live":
-        if not (s.get("client_id") and s.get("redirect_uri")):
-            raise HTTPException(400, "Save Client ID and Redirect URI first")
-        return {"auth_url": zoho.auth_url(s), "mode": "live"}
+    if s.get("mode") == "live":
+        missing = [k for k in ("client_id", "client_secret", "organization_id", "redirect_uri") if not s.get(k)]
+        if missing:
+            raise HTTPException(400, f"Save these first: {', '.join(missing)}")
+        state = uuid.uuid4().hex
+        await db.zoho_settings.update_one({"id": "default"}, {"$set": {"oauth_state": state, "oauth_state_at": iso()}})
+        await audit(user, "zoho.connect_start", "zoho", "default", {})
+        return {"auth_url": zoho.auth_url(s, state), "mode": "live"}
     await db.zoho_settings.update_one({"id": "default"}, {"$set": {"connected": True, "connected_at": iso()}, "$setOnInsert": {"id": "default"}}, upsert=True)
     await audit(user, "zoho.connect", "zoho", "default", {"mode": "mock"})
     return {"auth_url": None, "mode": "mock", "connected": True}
 
 
+def _page(title, msg, ok=True):
+    color = "#00A651" if ok else "#D32F2F"
+    return HTMLResponse(f"<html><head><meta name='viewport' content='width=device-width,initial-scale=1'/></head>"
+                        f"<body style='font-family:Arial;background:#121212;color:#F2F2F2;padding:32px;text-align:center'>"
+                        f"<h1 style='color:{color}'>{title}</h1><p style='font-size:18px'>{msg}</p>"
+                        f"<p>You can close this window and return to DrillStock Pro.</p></body></html>", status_code=200 if ok else 400)
+
+
 @api.get("/zoho/callback")
-async def zoho_callback(code: str):
+async def zoho_callback(code: str = "", state: str = "", error: str = "", accounts_server: str = ""):
     s = await zoho_settings()
-    tok = await run_in_threadpool(zoho.exchange_code, s, code)
-    await db.zoho_settings.update_one({"id": "default"}, {"$set": {"refresh_token": tok.get("refresh_token"), "connected": True, "connected_at": iso()}})
-    return {"ok": True, "message": "Zoho connected. You can return to the app."}
+    if error:
+        return _page("Zoho connection cancelled", error, ok=False)
+    if not state or state != s.get("oauth_state"):
+        return _page("Connection failed", "Invalid or expired request. Tap Connect again in the app.", ok=False)
+    allowed = {u[0] for u in zoho.DCS.values()}
+    try:
+        tok = await run_in_threadpool(zoho.exchange_code, s, code, accounts_server if accounts_server in allowed else "")
+    except zoho.ZohoError as e:
+        return _page("Connection failed", str(e), ok=False)
+    await db.zoho_settings.update_one({"id": "default"}, {"$set": {
+        "refresh_token": zoho.enc(tok["refresh_token"]), "connected": True, "connected_at": iso(), "oauth_state": None}})
+    s = await zoho_settings()
+    try:
+        kind, _ = await run_in_threadpool(zoho.list_locations, s)
+        await db.zoho_settings.update_one({"id": "default"}, {"$set": {"location_kind": kind}})
+    except zoho.ZohoError as e:
+        logger.warning("location probe failed: %s", e)
+    return _page("Zoho connected", "Next: map your QLD and NSW locations, then import items.")
 
 
 @api.post("/zoho/disconnect")
@@ -1196,6 +1229,108 @@ async def disconnect_zoho(user=Depends(roles("admin"))):
     await db.zoho_settings.update_one({"id": "default"}, {"$set": {"connected": False, "refresh_token": None}})
     await audit(user, "zoho.disconnect", "zoho", "default", {})
     return {"ok": True}
+
+
+async def live_settings():
+    s = await zoho_settings()
+    if not zoho.is_live(s):
+        raise HTTPException(400, "Switch to Live mode and connect Zoho first")
+    return s
+
+
+@api.get("/zoho/locations")
+async def zoho_locations(user=Depends(roles("admin"))):
+    s = await live_settings()
+    try:
+        kind, locs = await run_in_threadpool(zoho.list_locations, s)
+    except zoho.ZohoError as e:
+        raise HTTPException(502, str(e))
+    await db.zoho_settings.update_one({"id": "default"}, {"$set": {"location_kind": kind}})
+    return {"kind": kind, "locations": locs}
+
+
+class ImportIn(BaseModel):
+    sync_stock: bool = True
+
+
+async def unassigned_bin(wh):
+    code = f"{wh}-UNASSIGNED"
+    b = await db.bins.find_one({"code": code}, NOPROJ)
+    if not b:
+        b = {"id": nid(), "code": code, "warehouse_id": wh, "zone": "Unassigned", "name": "UNASSIGNED",
+             "description": "Stock imported from Zoho awaiting put-away", "active": True}
+        await db.bins.insert_one(dict(b))
+    elif not b.get("active"):
+        await db.bins.update_one({"id": b["id"]}, {"$set": {"active": True}})
+    return b
+
+
+@api.post("/zoho/import")
+async def zoho_import(body: ImportIn, user=Depends(roles("admin"))):
+    """Match Zoho items to app products by SKU (create missing) and align warehouse stock to Zoho."""
+    s = await live_settings()
+    kind = s.get("location_kind", "location")
+    whs = [w for w in await db.warehouses.find({}, NOPROJ).to_list(10) if w.get("zoho_warehouse_id")]
+    if not whs:
+        raise HTTPException(400, "Map QLD/NSW to Zoho locations first")
+    stats = {"created": 0, "updated": 0, "skipped_no_sku": 0, "stock_adjusted": 0, "warehouses": [w["id"] for w in whs]}
+    seen = set()
+    for w in whs:
+        try:
+            items = await run_in_threadpool(zoho.list_items, s, w["zoho_warehouse_id"], kind)
+        except zoho.ZohoError as e:
+            raise HTTPException(502, f"{w['id']}: {e}")
+        for it in items:
+            if it.get("product_type") == "service" or it.get("item_type") == "sales" or it.get("status") == "inactive":
+                continue
+            sku = (it.get("sku") or "").strip().upper()
+            if not sku:
+                stats["skipped_no_sku"] += 1
+                continue
+            p = await db.products.find_one({"sku": sku}, NOPROJ)
+            fields = {"zoho_item_id": str(it["item_id"]), "name": it.get("name") or sku}
+            if it.get("description"):
+                fields["description"] = it["description"]
+            if it.get("unit"):
+                fields["unit"] = it["unit"]
+            if it.get("reorder_level") not in (None, ""):
+                fields["reorder_level"] = int(float(it["reorder_level"]))
+            if p:
+                if sku not in seen:
+                    await db.products.update_one({"id": p["id"]}, {"$set": fields})
+                    stats["updated"] += 1
+            else:
+                p = {"id": nid(), "sku": sku, "description": "", "unit": "ea", "reorder_level": 0, **fields}
+                await db.products.insert_one(dict(p))
+                stats["created"] += 1
+            seen.add(sku)
+            if not body.sync_stock:
+                continue
+            target = int(round(zoho.item_qty(it, w["zoho_warehouse_id"])))
+            rows = await db.stock.find({"product_id": p["id"], "warehouse_id": w["id"]}, NOPROJ).sort("qty", -1).to_list(100)
+            delta = target - sum(r["qty"] for r in rows)
+            if delta == 0:
+                continue
+            ref = {"type": "zoho_import", "id": "import"}
+            if delta > 0:
+                b = await unassigned_bin(w["id"])
+                await apply_stock(w["id"], b["id"], p["id"], delta, mtype="zoho_sync", ref=ref, user=user, note="Zoho import")
+            else:
+                need = -delta
+                # take from UNASSIGNED first, then largest bins
+                ua = await db.bins.find_one({"code": f"{w['id']}-UNASSIGNED"}, NOPROJ)
+                rows.sort(key=lambda r: (r["bin_id"] != (ua or {}).get("id"), -r["qty"]))
+                for r in rows:
+                    if need <= 0:
+                        break
+                    take = min(need, r["qty"])
+                    if take > 0:
+                        await apply_stock(w["id"], r["bin_id"], p["id"], -take, mtype="zoho_sync", ref=ref, user=user, note="Zoho import")
+                        need -= take
+            stats["stock_adjusted"] += 1
+    await db.zoho_settings.update_one({"id": "default"}, {"$set": {"last_import": {"at": iso(), **stats}}})
+    await audit(user, "zoho.import", "zoho", "default", stats)
+    return stats
 
 
 @api.get("/zoho/sync-log")

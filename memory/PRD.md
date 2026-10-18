@@ -27,6 +27,11 @@ All features above end-to-end; testing iteration_1: backend 24/24, frontend crit
 - Zoho live connection deferred by user (still mocked)
 - Tests: iteration_3 backend 15/15, frontend flows green
 
+## Iteration 4 (2026-06)
+- Live-ready Zoho Inventory: in-app setup guide, Mock/Live toggle, encrypted secret + refresh token, OAuth w/ CSRF state + callback page, location listing & QLD/NSW mapping, import items by SKU + align stock (UNASSIGNED bin), adjustments with location_id + reference, retry/backoff
+- Awaiting user's Zoho credentials (entered in-app by admin); real Zoho calls untested
+- Tests: iteration_4 backend 17/17; UI gating fix applied
+
 ## Backlog
 - P0: Real Zoho credentials → set ZOHO_MODE=live, item ID mapping/sync of items from Zoho
 - P1: Emergent Google social login; push notifications (needs google-services.json + build)
