@@ -216,7 +216,7 @@ async def zoho_adjust(user, reason, warehouse_id, lines, ref):
     except Exception as e:  # noqa: BLE001
         log.update({"status": "failed", "error": str(e)[:500]})
         await db.zoho_sync_log.insert_one(log)
-        raise HTTPException(502, f"Zoho transaction failed: {str(e)[:200]}")
+        raise HTTPException(424, f"Zoho transaction failed: {str(e)[:200]}")
 
 
 async def apply_stock(warehouse_id, bin_id, product_id, delta, *, mtype, ref, user, rig=None, driller=None, note=None):
@@ -1116,7 +1116,7 @@ async def upload(file: UploadFile = File(...), user=Depends(current_user)):
         res = await run_in_threadpool(storage.put_object, path, data, ctype)
     except Exception as e:  # noqa: BLE001
         logger.error("upload failed: %s", e)
-        raise HTTPException(502, "Photo upload failed, please retry")
+        raise HTTPException(424, "Photo upload failed, please retry")
     await db.files.insert_one({"id": nid(), "storage_path": res["path"], "owner_id": user["id"], "content_type": ctype,
                                "size": len(data), "created_at": iso(), "is_deleted": False})
     return {"path": res["path"]}
@@ -1227,6 +1227,18 @@ async def zoho_callback(code: str = "", state: str = "", error: str = "",
     try:
         orgs = await run_in_threadpool(zoho.list_organizations, s)
         await db.zoho_settings.update_one({"id": "default"}, {"$set": {"organizations": orgs}})
+        if not s.get("organization_id") and len(orgs) > 1:
+            # prefer the org that actually has multiple locations / items
+            best = None
+            for o in orgs:
+                try:
+                    _, locs = await run_in_threadpool(zoho.list_locations, {**s, "organization_id": o["id"]})
+                    if best is None or len(locs) > best[1]:
+                        best = (o, len(locs))
+                except zoho.ZohoError:
+                    continue
+            if best and best[1] > 1:
+                orgs = [best[0]]
         if not s.get("organization_id") and len(orgs) == 1:
             await db.zoho_settings.update_one({"id": "default"}, {"$set": {"organization_id": orgs[0]["id"]}})
             msg = f"Organization “{orgs[0]['name']}” selected. " + msg
@@ -1258,10 +1270,14 @@ async def live_settings():
 @api.get("/zoho/locations")
 async def zoho_locations(user=Depends(roles("admin"))):
     s = await live_settings()
+    if not s.get("organization_id"):
+        orgs = s.get("organizations") or []
+        raise HTTPException(400, "Pick your Zoho organization first (Organization field), then Save settings"
+                            + (f": {', '.join(o['name'] + ' ' + o['id'] for o in orgs)}" if orgs else ""))
     try:
         kind, locs = await run_in_threadpool(zoho.list_locations, s)
     except zoho.ZohoError as e:
-        raise HTTPException(502, str(e))
+        raise HTTPException(424, str(e))
     await db.zoho_settings.update_one({"id": "default"}, {"$set": {"location_kind": kind}})
     return {"kind": kind, "locations": locs}
 
@@ -1296,7 +1312,7 @@ async def zoho_import(body: ImportIn, user=Depends(roles("admin"))):
         try:
             items = await run_in_threadpool(zoho.list_items, s, w["zoho_warehouse_id"], kind)
         except zoho.ZohoError as e:
-            raise HTTPException(502, f"{w['id']}: {e}")
+            raise HTTPException(424, f"{w['id']}: {e}")
         for it in items:
             if it.get("product_type") == "service" or it.get("item_type") == "sales" or it.get("status") == "inactive":
                 continue

@@ -37,6 +37,12 @@ export default function Zoho() {
     try {
       const r = await api("/zoho/locations");
       setLocs(r.locations);
+      // auto-suggest mapping by location name
+      const find = (re: RegExp) => r.locations.find((l: any) => re.test(`${l.name} ${l.state || ""}`))?.id;
+      const qld = find(/queensland|\bqld\b/i);
+      const nsw = find(/new south wales|\bnsw\b/i);
+      setF((cur: any) => ({ ...cur, qld_warehouse_id: cur.qld_warehouse_id || qld || "", nsw_warehouse_id: cur.nsw_warehouse_id || nsw || "" }));
+      if (qld || nsw) toast("Locations matched by name — check and tap Save settings", "info");
     } catch (e: any) { toast(e.message, "error"); } finally { setBusy(null); }
   };
   const runImport = async () => {
@@ -124,9 +130,12 @@ export default function Zoho() {
           <Field testID="zoho-client-secret-input" label={`Client secret ${f.client_secret_masked ? `(saved ${f.client_secret_masked})` : ""}`} value={f.client_secret} onChangeText={set("client_secret")} secureTextEntry autoCapitalize="none" placeholder="Leave blank to keep current" />
           <Field testID="zoho-org-id-input" label="Organization ID (auto-filled after connecting)" value={f.organization_id} onChangeText={set("organization_id")} keyboardType="number-pad" />
           {(q.data?.organizations || []).length > 1 && (
+            <Label>Choose your Zoho organization</Label>
+          )}
+          {(q.data?.organizations || []).length > 1 && (
             <Row style={{ flexWrap: "wrap", gap: spacing.sm }}>
               {q.data.organizations.map((o: any) => (
-                <Chip key={o.id} testID={`zoho-org-${o.id}`} label={o.name} selected={f.organization_id === o.id} onPress={() => setF({ ...f, organization_id: o.id })} />
+                <Chip key={o.id} testID={`zoho-org-${o.id}`} label={`${o.name} · ${o.id}`} selected={f.organization_id === o.id} onPress={() => setF({ ...f, organization_id: o.id })} />
               ))}
             </Row>
           )}
