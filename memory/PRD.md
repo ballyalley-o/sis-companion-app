@@ -33,6 +33,13 @@ All features above end-to-end; testing iteration_1: backend 24/24, frontend crit
 - Tests: iteration_4 backend 17/17; UI gating fix applied
 - User's Zoho client saved (AU data center confirmed valid); org ID + data center now auto-detected on OAuth callback (accounts-server/location params, /organizations)
 
+## Iteration 5 (2026-06)
+- Trip calendar (/trips): drillers plan trips (rig, dates, site, items incl. kits/common items); managers approve/reject/mark packed/issue (issue = linked take request approved → Zoho + stock); approved trips reserve stock; shortages shown
+- Reorders (/reorders): raised against trip shortages or manually; ordered/cancel; receive against reorder (prefilled) tracks received qty
+- Stock history trace (/history, product → Full stock history): totals, movements with running balance, upcoming trip reservations & open reorders
+- Zoho live connected to org 7007711688 (Sis.demo); QLD/NSW Logistics locations
+- Tests: iteration_6 backend 22/22, frontend verified (run in temporary mock mode, live restored)
+
 ## Backlog
 - P0: Real Zoho credentials → set ZOHO_MODE=live, item ID mapping/sync of items from Zoho
 - P1: Emergent Google social login; push notifications (needs google-services.json + build)

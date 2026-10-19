@@ -82,6 +82,8 @@ export default function Home() {
           ) : (
             <Tile testID="quick-my-requests" icon="clipboard-list-outline" label="My requests" onPress={() => router.push("/requests")} />
           )}
+          <Tile testID="quick-trips" icon="calendar-month" label="Trips" onPress={() => router.push("/trips")} />
+          <Tile testID="quick-history" icon="timeline-text-outline" label="Stock history" onPress={() => router.push("/history")} />
         </View>
 
         {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : d && (

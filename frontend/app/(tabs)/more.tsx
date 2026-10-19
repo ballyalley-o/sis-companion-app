@@ -8,6 +8,9 @@ import { makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
 type Item = { icon: IconName; label: string; sub: string; href: Href; roles: string[]; id: string };
 const ITEMS: Item[] = [
+  { id: "trips", icon: "calendar-month", label: "Trip calendar", sub: "Plan trips & pre-order stock", href: "/trips", roles: ["driller", "manager", "admin"] },
+  { id: "history", icon: "timeline-text-outline", label: "Stock history", sub: "Trace every movement of an item", href: "/history", roles: ["driller", "manager", "admin"] },
+  { id: "reorders", icon: "cart-arrow-down", label: "Reorders", sub: "Purchase reorders for trips & low stock", href: "/reorders", roles: ["manager", "admin"] },
   { id: "requests", icon: "gavel", label: "Stock requests", sub: "Approve / reject or track yours", href: "/requests", roles: ["driller", "manager", "admin"] },
   { id: "new-request", icon: "clipboard-plus-outline", label: "New stock request", sub: "Take or return stock", href: "/request/new", roles: ["driller", "manager", "admin"] },
   { id: "receive", icon: "truck-check", label: "Receive stock", sub: "Goods in from suppliers into bins", href: "/receive", roles: ["manager", "admin"] },

@@ -54,6 +54,7 @@ export default function ProductDetail() {
             </Card>
           ))}
           <Label>Movement history</Label>
+          <Button testID="product-full-history" title="Full stock history" icon="timeline-text-outline" variant="ghost" onPress={() => router.push({ pathname: "/history", params: { product_id: p.id } })} />
           <Card>
             {(mv.data || []).length === 0 ? <Body>No movements yet.</Body> : (mv.data || []).map((m) => (
               <Row key={m.id} style={{ paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.divider }}>

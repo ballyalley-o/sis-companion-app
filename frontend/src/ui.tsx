@@ -119,6 +119,8 @@ const STATUS: Record<string, { key: keyof ThemeColors; on: keyof ThemeColors; ic
   maintenance: { key: "error", on: "onError", icon: "wrench" },
   open: { key: "info", on: "onInfo", icon: "clipboard-edit-outline" },
   completed: { key: "success", on: "onSuccess", icon: "check-all" },
+  prepared: { key: "info", on: "onInfo", icon: "package-variant-closed-check", label: "Packed" },
+  issued: { key: "surfaceTertiary", on: "onSurfaceTertiary", icon: "truck-check" },
   take: { key: "brandPrimary", on: "onBrandPrimary", icon: "arrow-up-bold" },
   return: { key: "info", on: "onInfo", icon: "arrow-down-bold" },
   good: { key: "success", on: "onSuccess", icon: "thumb-up" },

@@ -672,6 +672,7 @@ class ReceiptIn(BaseModel):
     notes: str = ""
     items: List[ReqItem] = Field(min_length=1)
     client_ref: str
+    reorder_id: Optional[str] = None
 
 
 @api.post("/receipts")
@@ -697,8 +698,18 @@ async def create_receipt(body: ReceiptIn, user=Depends(roles("manager", "admin")
                           ref={"type": "receipt", "id": rid, "number": number}, user=user, note=body.reference or body.supplier)
     doc = {"id": rid, "number": number, "warehouse_id": body.warehouse_id, "supplier": body.supplier, "reference": body.reference,
            "notes": body.notes, "items": items, "received_by": user["name"], "created_at": iso(), "client_ref": body.client_ref,
-           "zoho_txn_id": res["txn_id"], "zoho_mode": res["mode"]}
+           "zoho_txn_id": res["txn_id"], "zoho_mode": res["mode"], "reorder_id": body.reorder_id}
     await db.receipts.insert_one(dict(doc))
+    if body.reorder_id:
+        ro = await db.reorders.find_one({"id": body.reorder_id}, NOPROJ)
+        if ro and ro["status"] in ("open", "ordered"):
+            got = {}
+            for it in items:
+                got[it["product_id"]] = got.get(it["product_id"], 0) + it["qty"]
+            new_items = [{**i, "received": i.get("received", 0) + got.get(i["product_id"], 0)} for i in ro["items"]]
+            status = "received" if all(i["received"] >= i["qty"] for i in new_items) else "partial"
+            await db.reorders.update_one({"id": ro["id"]}, {"$set": {"items": new_items, "status": status if status == "received" else ro["status"]},
+                                                         "$push": {"history": {"at": iso(), "status": status, "by": user["name"], "note": number}}})
     await audit(user, "receipt.create", "receipt", rid, {"number": number, "lines": len(items), "zoho_txn_id": res["txn_id"]})
     await notify(f"Stock received {number}", f"{len(items)} line(s) into {body.warehouse_id}{f' from {body.supplier}' if body.supplier else ''}",
                  kind="success", roles_=["manager", "admin"], warehouse_id=body.warehouse_id, ref={"type": "receipt", "id": rid})
@@ -794,6 +805,303 @@ async def delete_kit(kid: str, user=Depends(roles("manager", "admin"))):
     await db.rig_kits.delete_one({"id": kid})
     await audit(user, "kit.delete", "kit", kid, {"name": k["name"]})
     return {"ok": True}
+
+
+# ---------------------------------------------------------------- trips (calendar of planned driller trips)
+class TripItem(BaseModel):
+    product_id: str
+    qty: int = Field(gt=0, le=10000)
+
+
+class TripIn(BaseModel):
+    warehouse_id: str
+    driller_name: str
+    rig_number: str
+    site: str = ""
+    start_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    notes: str = ""
+    items: List[TripItem] = Field(min_length=1)
+
+
+RESERVING = ["approved", "prepared"]
+
+
+async def reserved_qty(product_id, warehouse_id, exclude_trip=None):
+    rows = await db.trips.aggregate([
+        {"$match": {"warehouse_id": warehouse_id, "status": {"$in": RESERVING}, **({"id": {"$ne": exclude_trip}} if exclude_trip else {})}},
+        {"$unwind": "$items"}, {"$match": {"items.product_id": product_id}},
+        {"$group": {"_id": None, "q": {"$sum": "$items.qty"}}}]).to_list(1)
+    return rows[0]["q"] if rows else 0
+
+
+async def enrich_trip(t):
+    totals = await warehouse_totals(t["warehouse_id"])
+    items = []
+    for it in t["items"]:
+        on_hand = totals.get((it["product_id"], t["warehouse_id"]), 0)
+        reserved = await reserved_qty(it["product_id"], t["warehouse_id"], exclude_trip=t["id"])
+        avail = max(0, on_hand - reserved)
+        items.append({**it, "on_hand": on_hand, "reserved_other": reserved, "available": avail, "short": max(0, it["qty"] - avail)})
+    reorders = await db.reorders.find({"trip_id": t["id"]}, NOPROJ).sort("created_at", -1).to_list(20)
+    return {**t, "items": items, "short_lines": sum(1 for i in items if i["short"]), "reorders": reorders}
+
+
+async def trip_items(body_items):
+    out = []
+    for it in body_items:
+        p = await db.products.find_one({"id": it.product_id}, NOPROJ)
+        if not p:
+            raise HTTPException(400, "Unknown product")
+        out.append({"product_id": p["id"], "sku": p["sku"], "name": p["name"], "unit": p["unit"], "qty": it.qty})
+    return out
+
+
+def _check_dates(body):
+    if body.end_date < body.start_date:
+        raise HTTPException(400, "End date must be on or after start date")
+
+
+async def get_trip_or_404(tid, user):
+    t = await db.trips.find_one({"id": tid}, NOPROJ)
+    if not t:
+        raise HTTPException(404, "Trip not found")
+    if user["role"] == "driller" and t["driller_id"] != user["id"]:
+        raise HTTPException(403, "Not your trip")
+    ensure_wh_access(user, t["warehouse_id"])
+    return t
+
+
+@api.post("/trips")
+async def create_trip(body: TripIn, user=Depends(current_user)):
+    _check_dates(body)
+    ensure_wh_access(user, body.warehouse_id)
+    doc = {"id": nid(), "number": f"TR-{now().strftime('%y%m%d')}-{uuid.uuid4().hex[:4].upper()}", **body.model_dump(exclude={"items"}),
+           "items": await trip_items(body.items), "driller_id": user["id"], "created_by": user["name"], "status": "pending",
+           "created_at": iso(), "issued_request_id": None, "history": [{"at": iso(), "status": "pending", "by": user["name"]}]}
+    await db.trips.insert_one(dict(doc))
+    await audit(user, "trip.create", "trip", doc["id"], {"number": doc["number"], "start": body.start_date})
+    await notify(f"Trip planned {doc['number']}", f"{body.driller_name} · {body.rig_number} · {body.start_date} → {body.end_date} · {len(doc['items'])} item(s)",
+                 kind="request", roles_=["manager", "admin"], warehouse_id=body.warehouse_id, ref={"type": "trip", "id": doc["id"]})
+    return doc
+
+
+@api.put("/trips/{tid}")
+async def update_trip(tid: str, body: TripIn, user=Depends(current_user)):
+    t = await get_trip_or_404(tid, user)
+    if t["status"] not in ("pending", "rejected"):
+        raise HTTPException(409, f"Trip is {t['status']}; only pending or rejected trips can be edited")
+    _check_dates(body)
+    upd = {**body.model_dump(exclude={"items"}), "items": await trip_items(body.items), "status": "pending"}
+    await db.trips.update_one({"id": tid}, {"$set": upd, "$push": {"history": {"at": iso(), "status": "pending", "by": user["name"], "note": "edited"}}})
+    await audit(user, "trip.update", "trip", tid, {})
+    return await db.trips.find_one({"id": tid}, NOPROJ)
+
+
+@api.get("/trips")
+async def list_trips(start: Optional[str] = None, end: Optional[str] = None, status: Optional[str] = None,
+                     warehouse_id: Optional[str] = None, user=Depends(current_user)):
+    filt = {}
+    if user["role"] == "driller":
+        filt["driller_id"] = user["id"]
+    else:
+        wh = scope_wh(user, warehouse_id)
+        if wh:
+            filt["warehouse_id"] = wh
+    if start and end:  # overlap with range
+        filt["start_date"] = {"$lte": end}
+        filt["end_date"] = {"$gte": start}
+    if status and status != "all":
+        filt["status"] = status
+    return await db.trips.find(filt, NOPROJ).sort("start_date", 1).to_list(500)
+
+
+@api.get("/trips/{tid}")
+async def get_trip(tid: str, user=Depends(current_user)):
+    return await enrich_trip(await get_trip_or_404(tid, user))
+
+
+async def trip_transition(tid, user, frm, to, note="", extra=None):
+    upd = await db.trips.find_one_and_update({"id": tid, "status": {"$in": frm}}, {
+        "$set": {"status": to, **(extra or {})}, "$push": {"history": {"at": iso(), "status": to, "by": user["name"], "note": note}}})
+    if not upd:
+        t = await db.trips.find_one({"id": tid}, NOPROJ)
+        raise HTTPException(409, f"Trip is {t['status'] if t else 'missing'}")
+    await audit(user, f"trip.{to}", "trip", tid, {"note": note})
+    return upd
+
+
+@api.post("/trips/{tid}/approve")
+async def approve_trip(tid: str, body: DecisionIn, user=Depends(roles("manager", "admin"))):
+    t = await get_trip_or_404(tid, user)
+    await trip_transition(tid, user, ["pending"], "approved", body.note)
+    await notify(f"Trip {t['number']} approved", f"Stock for {t['start_date']} is reserved{f': {body.note}' if body.note else ''}",
+                 kind="success", user_id=t["driller_id"], ref={"type": "trip", "id": tid})
+    return await enrich_trip(await db.trips.find_one({"id": tid}, NOPROJ))
+
+
+@api.post("/trips/{tid}/reject")
+async def reject_trip(tid: str, body: DecisionIn, user=Depends(roles("manager", "admin"))):
+    t = await get_trip_or_404(tid, user)
+    await trip_transition(tid, user, ["pending", "approved"], "rejected", body.note)
+    await notify(f"Trip {t['number']} rejected", body.note or "Contact your warehouse manager", kind="error", user_id=t["driller_id"], ref={"type": "trip", "id": tid})
+    return await enrich_trip(await db.trips.find_one({"id": tid}, NOPROJ))
+
+
+@api.post("/trips/{tid}/prepare")
+async def prepare_trip(tid: str, body: DecisionIn, user=Depends(roles("manager", "admin"))):
+    t = await get_trip_or_404(tid, user)
+    await trip_transition(tid, user, ["approved"], "prepared", body.note)
+    await notify(f"Trip {t['number']} packed & ready", f"Collect from {t['warehouse_id']} warehouse", kind="success", user_id=t["driller_id"], ref={"type": "trip", "id": tid})
+    return await enrich_trip(await db.trips.find_one({"id": tid}, NOPROJ))
+
+
+@api.post("/trips/{tid}/cancel")
+async def cancel_trip(tid: str, user=Depends(current_user)):
+    t = await get_trip_or_404(tid, user)
+    if user["role"] == "driller" and t["status"] != "pending":
+        raise HTTPException(409, "Ask a manager to cancel an approved trip")
+    await trip_transition(tid, user, ["pending", "approved", "prepared", "rejected"], "cancelled")
+    return {"ok": True}
+
+
+@api.post("/trips/{tid}/issue")
+async def issue_trip(tid: str, user=Depends(roles("manager", "admin"))):
+    """Hand stock over: creates a take request from the trip and approves it (Zoho first, then stock)."""
+    t = await enrich_trip(await get_trip_or_404(tid, user))
+    if t["status"] not in RESERVING:
+        raise HTTPException(409, f"Trip is {t['status']}; approve it first")
+    lines = []
+    for it in t["items"]:
+        need = it["qty"]
+        for r in await db.stock.find({"product_id": it["product_id"], "warehouse_id": t["warehouse_id"], "qty": {"$gt": 0}}, NOPROJ).sort("qty", -1).to_list(50):
+            if need <= 0:
+                break
+            take = min(need, r["qty"])
+            b = await db.bins.find_one({"id": r["bin_id"]}, NOPROJ)
+            lines.append({"product_id": it["product_id"], "sku": it["sku"], "name": it["name"], "unit": it["unit"],
+                          "bin_id": r["bin_id"], "bin_code": b["code"] if b else "", "qty": take})
+            need -= take
+        if need > 0:
+            raise HTTPException(400, f"Not enough {it['sku']} on hand ({it['on_hand']}); reorder or reduce the trip")
+    rid = nid()
+    req = {"id": rid, "number": f"SR-{now().strftime('%y%m%d')}-{uuid.uuid4().hex[:4].upper()}", "type": "take",
+           "warehouse_id": t["warehouse_id"], "driller_name": t["driller_name"], "rig_number": t["rig_number"],
+           "submitted_by_id": t["driller_id"], "submitted_by": t["created_by"], "items": lines, "notes": f"Trip {t['number']} · {t['site']}",
+           "status": "pending", "client_ref": f"trip-{tid}", "created_at": iso(), "decided_at": None, "decided_by": None,
+           "decision_note": None, "zoho_txn_id": None, "zoho_mode": None, "trip_id": tid,
+           "history": [{"at": iso(), "status": "pending", "by": user["name"], "note": f"from trip {t['number']}"}]}
+    existing = await db.stock_requests.find_one({"client_ref": req["client_ref"]}, NOPROJ)
+    if existing:
+        rid = existing["id"]
+    else:
+        await db.stock_requests.insert_one(dict(req))
+    done = await approve_request(rid, DecisionIn(note=f"Issued for trip {t['number']}"), user)
+    await trip_transition(tid, user, RESERVING, "issued", extra={"issued_request_id": rid, "issued_at": iso()})
+    return {"trip_id": tid, "request": done}
+
+
+class ReorderIn(BaseModel):
+    items: List[TripItem] = []  # empty -> all shortages
+    supplier: str = ""
+    notes: str = ""
+
+
+@api.post("/trips/{tid}/reorder")
+async def reorder_trip(tid: str, body: ReorderIn, user=Depends(roles("manager", "admin"))):
+    t = await enrich_trip(await get_trip_or_404(tid, user))
+    if body.items:
+        items = await trip_items(body.items)
+    else:
+        items = [{k: i[k] for k in ("product_id", "sku", "name", "unit")} | {"qty": i["short"]} for i in t["items"] if i["short"] > 0]
+    if not items:
+        raise HTTPException(400, "Nothing is short for this trip")
+    return await make_reorder(user, t["warehouse_id"], items, body.supplier, body.notes, trip=t)
+
+
+async def make_reorder(user, warehouse_id, items, supplier="", notes="", trip=None):
+    doc = {"id": nid(), "number": f"RO-{now().strftime('%y%m%d')}-{uuid.uuid4().hex[:4].upper()}", "warehouse_id": warehouse_id,
+           "items": [{**i, "received": 0} for i in items], "supplier": supplier, "notes": notes, "status": "open",
+           "trip_id": trip["id"] if trip else None, "trip_number": trip["number"] if trip else None,
+           "needed_by": trip["start_date"] if trip else None, "created_by": user["name"], "created_at": iso(),
+           "history": [{"at": iso(), "status": "open", "by": user["name"]}]}
+    await db.reorders.insert_one(dict(doc))
+    await audit(user, "reorder.create", "reorder", doc["id"], {"number": doc["number"], "trip": doc["trip_number"]})
+    await notify(f"Reorder {doc['number']} raised", f"{len(items)} line(s) for {warehouse_id}" + (f" · trip {trip['number']} on {trip['start_date']}" if trip else ""),
+                 kind="warning", roles_=["manager", "admin"], warehouse_id=warehouse_id, ref={"type": "reorder", "id": doc["id"]})
+    return doc
+
+
+class ReorderNewIn(BaseModel):
+    warehouse_id: str
+    items: List[TripItem] = Field(min_length=1)
+    supplier: str = ""
+    notes: str = ""
+
+
+@api.post("/reorders")
+async def create_reorder(body: ReorderNewIn, user=Depends(roles("manager", "admin"))):
+    ensure_wh_access(user, body.warehouse_id)
+    return await make_reorder(user, body.warehouse_id, await trip_items(body.items), body.supplier, body.notes)
+
+
+@api.get("/reorders")
+async def list_reorders(status: Optional[str] = None, warehouse_id: Optional[str] = None, user=Depends(roles("manager", "admin"))):
+    wh = scope_wh(user, warehouse_id)
+    filt = {**({"warehouse_id": wh} if wh else {}), **({"status": status} if status and status != "all" else {})}
+    return await db.reorders.find(filt, NOPROJ).sort("created_at", -1).to_list(300)
+
+
+@api.get("/reorders/{oid}")
+async def get_reorder(oid: str, user=Depends(roles("manager", "admin"))):
+    r = await db.reorders.find_one({"id": oid}, NOPROJ)
+    if not r:
+        raise HTTPException(404, "Reorder not found")
+    ensure_wh_access(user, r["warehouse_id"])
+    return r
+
+
+class ReorderStatusIn(BaseModel):
+    status: Literal["ordered", "cancelled"]
+    note: str = ""
+
+
+@api.post("/reorders/{oid}/status")
+async def reorder_status(oid: str, body: ReorderStatusIn, user=Depends(roles("manager", "admin"))):
+    r = await get_reorder(oid, user)
+    allowed = {"ordered": ["open"], "cancelled": ["open", "ordered"]}[body.status]
+    upd = await db.reorders.find_one_and_update({"id": oid, "status": {"$in": allowed}}, {"$set": {"status": body.status},
+                                                "$push": {"history": {"at": iso(), "status": body.status, "by": user["name"], "note": body.note}}})
+    if not upd:
+        raise HTTPException(409, f"Reorder is {r['status']}")
+    await audit(user, f"reorder.{body.status}", "reorder", oid, {"note": body.note})
+    return await db.reorders.find_one({"id": oid}, NOPROJ)
+
+
+# ---------------------------------------------------------------- stock trace (full history of one product)
+@api.get("/products/{pid}/trace")
+async def product_trace(pid: str, warehouse_id: Optional[str] = None, user=Depends(current_user)):
+    p = await db.products.find_one({"id": pid}, NOPROJ)
+    if not p:
+        raise HTTPException(404, "Product not found")
+    wh = scope_wh(user, warehouse_id)
+    whf = {"warehouse_id": wh} if wh else {}
+    moves = await db.movements.find({"product_id": pid, **whf}, NOPROJ).sort("at", -1).to_list(500)
+    # running balance (newest first): walk backwards from current totals
+    totals = await warehouse_totals(wh)
+    bal = {w: totals.get((pid, w), 0) for w in (["QLD", "NSW"] if not wh else [wh])}
+    for m in moves:
+        m["balance_after"] = bal.get(m["warehouse_id"], 0)
+        bal[m["warehouse_id"]] = bal.get(m["warehouse_id"], 0) - m["delta"]
+    trips = await db.trips.find({"items.product_id": pid, "status": {"$in": ["pending", *RESERVING]}, **whf}, NOPROJ).sort("start_date", 1).to_list(100)
+    reservations = [{"trip_id": t["id"], "number": t["number"], "status": t["status"], "start_date": t["start_date"], "warehouse_id": t["warehouse_id"],
+                     "driller_name": t["driller_name"], "rig_number": t["rig_number"],
+                     "qty": sum(i["qty"] for i in t["items"] if i["product_id"] == pid)} for t in trips]
+    ros = await db.reorders.find({"items.product_id": pid, "status": {"$in": ["open", "ordered"]}, **whf}, NOPROJ).sort("created_at", -1).to_list(50)
+    reorders = [{"id": r["id"], "number": r["number"], "status": r["status"], "warehouse_id": r["warehouse_id"], "needed_by": r.get("needed_by"),
+                 "qty": sum(i["qty"] - i.get("received", 0) for i in r["items"] if i["product_id"] == pid)} for r in ros]
+    full = await product_with_stock(p, wh)
+    return {"product": full, "movements": moves, "reservations": reservations, "reorders": reorders}
 
 
 # ---------------------------------------------------------------- stock counts

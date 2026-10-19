@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -27,7 +27,7 @@ export default function Receive() {
   const toast = useToast();
   const qc = useQueryClient();
   const { user } = useAuth();
-  const p = useLocalSearchParams<{ wh?: string; bin_id?: string }>();
+  const p = useLocalSearchParams<{ wh?: string; bin_id?: string; reorder_id?: string }>();
   const [wh, setWh] = useState<string>(user?.role === "manager" ? user.warehouse_id! : p.wh || "QLD");
   const [supplier, setSupplier] = useState("");
   const [reference, setReference] = useState("");
@@ -39,6 +39,27 @@ export default function Receive() {
   const bins = useApi<any[]>(`/bins?warehouse_id=${wh}`);
   const results = useApi<any[]>(search.trim().length >= 2 ? `/products?warehouse_id=${wh}&q=${encodeURIComponent(search.trim())}` : null);
   const binOpts = (bins.data || []).map((b) => ({ label: b.code, value: b.id }));
+  const reorder = useApi<any>(p.reorder_id ? `/reorders/${p.reorder_id}` : null);
+  const [prefilled, setPrefilled] = useState(false);
+  useEffect(() => {
+    if (!reorder.data || !bins.data || prefilled) return;
+    const r = reorder.data;
+    (async () => {
+      const out: Line[] = [];
+      for (const i of r.items) {
+        const left = i.qty - (i.received || 0);
+        if (left <= 0) continue;
+        const prod = await api(`/products/${i.product_id}`).catch(() => null);
+        const home = prod?.locations?.find((l: any) => l.warehouse_id === r.warehouse_id);
+        const bin_id = home?.bin_id || bins.data?.[0]?.id;
+        if (bin_id) out.push({ product_id: i.product_id, sku: i.sku, name: i.name, unit: i.unit, bin_id, qty: left });
+      }
+      setLines(out);
+      setSupplier(r.supplier || "");
+      setReference(r.number);
+      setPrefilled(true);
+    })();
+  }, [reorder.data, bins.data, prefilled]);
 
   const add = (prod: any) => {
     if (lines.some((l) => l.product_id === prod.id)) return toast(`${prod.sku} already added`, "info");
@@ -54,7 +75,7 @@ export default function Receive() {
     setBusy(true);
     try {
       const r = await api("/receipts", { method: "POST", body: {
-        warehouse_id: wh, supplier, reference, notes, client_ref: clientRef.current,
+        warehouse_id: wh, supplier, reference, notes, client_ref: clientRef.current, reorder_id: p.reorder_id || null,
         items: lines.map((l) => ({ product_id: l.product_id, bin_id: l.bin_id, qty: l.qty })) } });
       qc.invalidateQueries();
       toast(`${r.number} received · Zoho ${r.zoho_txn_id}`);

@@ -33,6 +33,8 @@ export default function Notifications() {
     else if (n.ref?.type === "equipment") router.push({ pathname: "/equipment/[id]", params: { id: n.ref.id } });
     else if (n.ref?.type === "count") router.push({ pathname: "/counts/[id]", params: { id: n.ref.id } });
     else if (n.ref?.type === "product") router.push({ pathname: "/product/[id]", params: { id: n.ref.id } });
+    else if (n.ref?.type === "trip") router.push({ pathname: "/trips/[id]", params: { id: n.ref.id } });
+    else if (n.ref?.type === "reorder") router.push("/reorders");
   };
 
   return (
