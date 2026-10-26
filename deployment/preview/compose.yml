@@ -1,0 +1,56 @@
+services:
+  mongo:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${PREVIEW_MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${PREVIEW_MONGO_PASSWORD}
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet -u \"$${MONGO_INITDB_ROOT_USERNAME}\" -p \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin --eval \"db.adminCommand('ping').ok\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  api:
+    build:
+      context: ../../backend
+    env_file: ../../.preview/api.env
+    volumes:
+      - upload-data:/data/uploads
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready',timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  web:
+    build:
+      context: ../../frontend
+      args:
+        EXPO_PUBLIC_BACKEND_URL: ""
+        EXPO_PUBLIC_GOOGLE_CLIENT_ID: ""
+        EXPO_PUBLIC_ENABLE_DEMO_ACCOUNTS: "true"
+        EXPO_PUBLIC_DEMO_DRILLER_EMAIL: jake@drillstock.com
+        EXPO_PUBLIC_DEMO_DRILLER_PASSWORD: Driller@123
+        EXPO_PUBLIC_DEMO_MANAGER_EMAIL: qld.manager@drillstock.com
+        EXPO_PUBLIC_DEMO_MANAGER_PASSWORD: Manager@123
+        EXPO_PUBLIC_DEMO_ADMIN_EMAIL: admin@drillstock.com
+        EXPO_PUBLIC_DEMO_ADMIN_PASSWORD: ${PREVIEW_ADMIN_PASSWORD}
+    volumes:
+      - gateway-config:/etc/nginx/conf.d
+    ports:
+      - "127.0.0.1:8083:80"
+    depends_on:
+      api:
+        condition: service_healthy
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --protocol http2 --url http://web:80
+    depends_on:
+      - web
+volumes:
+  mongo-data:
+  upload-data:
+  gateway-config:

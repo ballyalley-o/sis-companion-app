@@ -1,0 +1,57 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${DB_NAME}
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet -u \"$${MONGO_INITDB_ROOT_USERNAME}\" -p \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin --eval \"db.adminCommand('ping').ok\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - upload-data:/data/uploads
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        EXPO_PUBLIC_BACKEND_URL: ${EXPO_PUBLIC_BACKEND_URL:-http://localhost:8000}
+        EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${EXPO_PUBLIC_GOOGLE_CLIENT_ID:-}
+        EXPO_PUBLIC_ENABLE_DEMO_ACCOUNTS: ${EXPO_PUBLIC_ENABLE_DEMO_ACCOUNTS:-false}
+        EXPO_PUBLIC_DEMO_DRILLER_EMAIL: ${EXPO_PUBLIC_DEMO_DRILLER_EMAIL:-}
+        EXPO_PUBLIC_DEMO_DRILLER_PASSWORD: ${EXPO_PUBLIC_DEMO_DRILLER_PASSWORD:-}
+        EXPO_PUBLIC_DEMO_MANAGER_EMAIL: ${EXPO_PUBLIC_DEMO_MANAGER_EMAIL:-}
+        EXPO_PUBLIC_DEMO_MANAGER_PASSWORD: ${EXPO_PUBLIC_DEMO_MANAGER_PASSWORD:-}
+        EXPO_PUBLIC_DEMO_ADMIN_EMAIL: ${EXPO_PUBLIC_DEMO_ADMIN_EMAIL:-}
+        EXPO_PUBLIC_DEMO_ADMIN_PASSWORD: ${EXPO_PUBLIC_DEMO_ADMIN_PASSWORD:-}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8081}:80"
+
+volumes:
+  mongo-data:
+  upload-data:

@@ -21,7 +21,7 @@ Version 1.0 | Proposed sequencing; estimate after source audit
 
 **E2 Inventory integrity (P0):** immutable movement ledger; idempotency and duplicate constraints; concurrent issue/reservations; reversals; units and per-line receiving.
 
-**E3 PWA/QR (P0):** confirm web build; secure QR resolution; live bin page and manual fallback; install/cache policy; physical label testing.
+**E3 PWA/QR (P0):** Expo Router, React Native Web and single-page web output are present. This change adds a standalone manifest, narrow caching for versioned static assets (never API responses) and read-only bin links in new labels when `PUBLIC_APP_URL` is configured. Next: confirm production HTTPS/SPA rewrites, deploy and test install on target browsers, camera behavior, sign-in and physical labels. Offline inventory is not supported.
 
 **E4 Zoho (P1):** OAuth/scope/encryption; org/location/SKU policy; dry-run import; durable queue and unknown outcomes; reconciliation/kill switch; sandbox/canary.
 

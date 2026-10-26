@@ -14,6 +14,7 @@ const ITEMS: Item[] = [
   { id: "requests", icon: "gavel", label: "Stock requests", sub: "Approve / reject or track yours", href: "/requests", roles: ["driller", "manager", "admin"] },
   { id: "new-request", icon: "clipboard-plus-outline", label: "New stock request", sub: "Take or return stock", href: "/request/new", roles: ["driller", "manager", "admin"] },
   { id: "receive", icon: "truck-check", label: "Receive stock", sub: "Goods in from suppliers into bins", href: "/receive", roles: ["manager", "admin"] },
+  { id: "orders", icon: "clipboard-list-outline", label: "Zoho purchase orders", sub: "Scan order references and receive arrivals", href: "/orders", roles: ["manager", "admin"] },
   { id: "kits", icon: "package-variant-plus", label: "Rig kits", sub: "Standard item kits per rig", href: "/kits", roles: ["manager", "admin"] },
   { id: "notifications", icon: "bell-outline", label: "Notifications", sub: "Approvals, low stock, damage", href: "/notifications", roles: ["driller", "manager", "admin"] },
   { id: "counts", icon: "clipboard-check-outline", label: "Stocktake & cycle counts", sub: "Count bins, post variances", href: "/counts", roles: ["manager", "admin"] },

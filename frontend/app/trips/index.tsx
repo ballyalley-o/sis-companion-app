@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/src/auth";
 import { useApi } from "@/src/hooks";
+import { GoogleMapsAddress } from "@/src/GoogleMapsAddress";
 import { Body, Card, ChipRow, EmptyState, ErrorState, H3, Header, IconButton, Label, Loading, Mono, Row, StatusPill } from "@/src/ui";
 import { fonts, makeStyles, radius, spacing, ThemeColors, useTheme } from "@/src/theme";
 
@@ -89,6 +90,7 @@ export default function TripsCalendar() {
               </Row>
               <Body style={{ color: colors.onSurface, fontWeight: "800" }}>{t.driller_name} · {t.rig_number}</Body>
               <Label>{t.start_date} → {t.end_date} · {t.warehouse_id}{t.site ? ` · ${t.site}` : ""} · {t.items.length} item(s)</Label>
+              <GoogleMapsAddress address={t.address} directions={false} testID={`trip-calendar-address-${t.id}`} />
             </Card>
           ))}
         </View>

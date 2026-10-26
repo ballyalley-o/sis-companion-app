@@ -2,6 +2,8 @@
 
 Version 1.0 | Target procedure; hosting platform unverified
 
+See [Self-hosting and Deployment Guide](13-self-hosting.md) for the Docker images, environment variables, first-admin setup, Google web authentication, object storage and data-cutover requirements. The Compose stack is for development only; production requires isolated managed services.
+
 ## Environments and release
 
 Maintain separate development, staging and production environments, URLs, databases, OAuth clients, storage and credentials. Never copy production secrets/data into development. CI requires reviewed changes, protected branch, build/tests/security/migration checks and least-privilege credentials. Release an immutable artifact from a recorded commit.
@@ -33,4 +35,10 @@ Recovery: contain suspected unauthorized/incorrect writes; disable outbound Zoho
 **Service outage:** communicate safe manual procedure. Do not create an uncontrolled parallel stock ledger. Reconcile paper actions on recovery and record original event time and operator.
 
 Before launch name product owner, technical support, warehouse approver, Zoho administrator and backup custodian; document hours and escalation path.
+
+# Web/PWA deployment notes
+
+The frontend is an Expo Router application using React Native Web and Metro's `single` output. Deploy the exported web bundle behind HTTPS with a fallback rewrite to `index.html` for app routes. `frontend/public/manifest.json` supplies install metadata; `frontend/public/service-worker.js` caches only static app assets and excludes API/data paths.
+
+Set backend `PUBLIC_APP_URL` to the public HTTPS origin (for example, `https://inventory.example.com`) before generating bin labels. Without it, QR labels continue to use the legacy `BIN:{code}` text payload. Rebuild/redeploy the web frontend when its config changes. Verify deep links, authentication return behavior, installation and labels in the actual hosting environment before rollout. PWA caching does not provide offline inventory access.
 

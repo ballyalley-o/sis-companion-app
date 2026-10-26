@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { ScrollView, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,8 +19,14 @@ export default function BinDetail() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const toast = useToast();
-  const { user } = useAuth();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { user, ready } = useAuth();
+  const { id, view } = useLocalSearchParams<{ id: string; view?: string }>();
+  const readOnly = view === "1";
+  useEffect(() => {
+    if (ready && !user) {
+      router.replace({ pathname: "/login", params: { returnTo: `/bin/${id}?view=1` } });
+    }
+  }, [id, ready, router, user]);
   const q = useApi<any>(`/bins/${id}`);
   const qr = useApi<any>(q.data ? `/qr?payload=${encodeURIComponent(q.data.qr_payload)}` : null);
   const b = q.data;
@@ -34,7 +41,7 @@ export default function BinDetail() {
         <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: insets.bottom + spacing.xl }}>
           <BinLabel testID="bin-label-preview" code={b.code} title={b.title} qr={qr.data?.data_uri} />
           <Label>{b.description} · {b.items.length} SKU line(s) · sticker 100×50mm</Label>
-          {isStaff(user) && (
+          {!readOnly && isStaff(user) && (
             <Row>
               <Button testID="bin-print-label" title="Print" icon="printer" variant="secondary" style={{ flex: 1 }}
                 onPress={() => qr.data && printLabels([{ code: b.code, title: b.title, data_uri: qr.data.data_uri }]).catch((e) => toast(e.message, "error"))} />
@@ -56,10 +63,10 @@ export default function BinDetail() {
                   <Label>{it.unit}</Label>
                 </View>
               </Row>
-              <Row>
+              {!readOnly && <Row>
                 <Button testID={`bin-take-${it.sku}`} title="Take" icon="arrow-up-bold" style={{ flex: 1 }} disabled={it.qty <= 0} onPress={() => go("take", it.product_id)} />
                 <Button testID={`bin-return-${it.sku}`} title="Return" icon="arrow-down-bold" variant="secondary" style={{ flex: 1 }} onPress={() => go("return", it.product_id)} />
-              </Row>
+              </Row>}
             </Card>
           ))}
         </ScrollView>

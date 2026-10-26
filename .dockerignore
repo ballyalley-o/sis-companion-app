@@ -1,0 +1,12 @@
+.git
+.env
+.env.*
+!.env.example
+**/node_modules
+**/.expo
+**/.metro-cache
+**/dist
+**/web-build
+**/__pycache__
+**/.venv
+**/venv

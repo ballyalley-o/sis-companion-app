@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
 import { useAuth } from "@/src/auth";
 import { useApi } from "@/src/hooks";
+import { GoogleMapsAddress } from "@/src/GoogleMapsAddress";
 import { CommonItems, DidYouMean } from "@/src/suggest";
 import { Body, Button, Card, ChipRow, Field, Header, Icon, IconButton, Label, Loading, Mono, Row, Stepper, useToast } from "@/src/ui";
 import { makeStyles, radius, spacing, useTheme } from "@/src/theme";
@@ -36,6 +37,7 @@ export default function TripForm() {
   const [driller, setDriller] = useState(user?.role === "driller" ? user.name : "");
   const [rig, setRig] = useState("");
   const [site, setSite] = useState("");
+  const [address, setAddress] = useState("");
   const [start, setStart] = useState(p.date || "");
   const [end, setEnd] = useState(p.date || "");
   const [notes, setNotes] = useState("");
@@ -51,6 +53,7 @@ export default function TripForm() {
     if (t && !loaded) {
       setWh(t.warehouse_id); setDriller(t.driller_name); setRig(t.rig_number); setSite(t.site); setStart(t.start_date);
       setEnd(t.end_date); setNotes(t.notes);
+      setAddress(t.address || "");
       setItems(t.items.map((i: any) => ({ product_id: i.product_id, sku: i.sku, name: i.name, unit: i.unit, qty: i.qty })));
       setLoaded(true);
     }
@@ -75,7 +78,7 @@ export default function TripForm() {
     if (!items.length) return toast("Add the items you need", "error");
     setBusy(true);
     try {
-      const body = { warehouse_id: wh, driller_name: driller, rig_number: rig, site, start_date: start, end_date: end, notes,
+      const body = { warehouse_id: wh, driller_name: driller, rig_number: rig, site, address: address.trim(), start_date: start, end_date: end, notes,
         items: items.map((i) => ({ product_id: i.product_id, qty: i.qty })) };
       const r = await api(p.id ? `/trips/${p.id}` : "/trips", { method: p.id ? "PUT" : "POST", body });
       qc.invalidateQueries();
@@ -115,6 +118,12 @@ export default function TripForm() {
           <View style={{ flex: 1 }}><Field testID="trip-end-input" label="End (YYYY-MM-DD)" value={end} onChangeText={setEnd} placeholder="2026-07-14" keyboardType="numbers-and-punctuation" /></View>
         </Row>
         <Field testID="trip-site-input" label="Site / project" value={site} onChangeText={setSite} placeholder="e.g. Mt Isa — Hole MI-204" />
+        <View style={{ gap: spacing.sm }}>
+          <Field testID="trip-address-input" label="Destination address" value={address} onChangeText={setAddress}
+            placeholder="Street address, town and postcode" autoComplete="street-address" maxLength={500} />
+          <GoogleMapsAddress address={address} testID="trip-form-address" />
+          <Body style={{ color: colors.muted, fontSize: 13 }}>Enter the destination, then open it in Google Maps to check the location or get directions.</Body>
+        </View>
 
         <View style={{ gap: spacing.md }}>
           <Label>Items needed ({items.length})</Label>

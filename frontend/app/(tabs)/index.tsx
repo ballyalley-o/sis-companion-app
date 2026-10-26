@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, RefreshControl, ScrollView, View } from "react-native";
+import { Platform, Pressable, RefreshControl, ScrollView, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -27,11 +27,11 @@ const useStyles = makeStyles((c) => ({
   rowItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: c.divider, gap: spacing.md },
 }));
 
-function Tile({ icon, label, onPress, primary, testID }: { icon: IconName; label: string; onPress: () => void; primary?: boolean; testID: string }) {
+function Tile({ icon, label, onPress, primary, testID, desktop }: { icon: IconName; label: string; onPress: () => void; primary?: boolean; testID: string; desktop?: boolean }) {
   const s = useStyles();
   const { colors } = useTheme();
   return (
-    <Pressable testID={testID} onPress={onPress} style={({ pressed }) => [s.tile, primary && { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary }, pressed && { transform: [{ scale: 0.97 }] }]}>
+    <Pressable testID={testID} onPress={onPress} style={({ pressed }) => [s.tile, { width: desktop ? "31.5%" : "47.5%" }, primary && { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary }, pressed && { transform: [{ scale: 0.97 }] }]}>
       <Icon name={icon} size={36} color={primary ? colors.onBrandPrimary : colors.brandPrimary} />
       <Body style={[s.tileText, primary && { color: colors.onBrandPrimary }]}>{label}</Body>
     </Pressable>
@@ -44,6 +44,8 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
+  const { width } = useWindowDimensions();
+  const desktop = Platform.OS === "web" && width >= 1000;
   const staff = isStaff(user);
   const [wh, setWh] = useState<string>(user?.role === "admin" ? "ALL" : user?.warehouse_id || "ALL");
   const q = useApi<any>(`/dashboard${wh !== "ALL" && user?.role !== "manager" ? `?warehouse_id=${wh}` : ""}`);
@@ -53,9 +55,9 @@ export default function Home() {
 
   return (
     <View style={s.root} testID="dashboard-screen">
-      <ScrollView contentContainerStyle={{ paddingBottom: bottomChrome + spacing.xl, gap: spacing.lg }}
+      <ScrollView contentContainerStyle={{ paddingBottom: bottomChrome + spacing.xl, gap: spacing.lg, width: "100%", maxWidth: desktop ? 1520 : undefined, alignSelf: "center" }}
         refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={() => { q.refetch(); unread.refetch(); }} />}>
-        <View style={s.hero}>
+        <View style={[s.hero, desktop && { height: 240 }]}>
           <Image source={{ uri: HERO }} style={{ position: "absolute", width: "100%", height: "100%" }} contentFit="cover" />
           <LinearGradient colors={["transparent", colors.scrim, colors.surface]} style={{ position: "absolute", width: "100%", height: "100%" }} />
           <View style={[s.topRow, { top: insets.top + spacing.sm }]}>
@@ -73,17 +75,18 @@ export default function Home() {
             options={[{ label: "All sites", value: "ALL" }, { label: "Queensland", value: "QLD" }, { label: "New South Wales", value: "NSW" }]} />
         )}
 
-        <View style={s.grid}>
-          <Tile testID="quick-scan-bin" icon="qrcode-scan" label="Scan bin" primary onPress={() => router.push("/scan")} />
-          <Tile testID="quick-search-stock" icon="magnify" label="Search stock" onPress={() => router.push("/(tabs)/stock")} />
-          <Tile testID="quick-equipment" icon="tools" label="Equipment" onPress={() => router.push("/(tabs)/equipment")} />
+        <View style={[s.grid, desktop && { gap: spacing.lg }]}>
+          <Tile desktop={desktop} testID="quick-scan-bin" icon="qrcode-scan" label="Scan bin" primary onPress={() => router.push("/scan")} />
+          <Tile desktop={desktop} testID="quick-search-stock" icon="magnify" label="Search stock" onPress={() => router.push("/(tabs)/stock")} />
+          <Tile desktop={desktop} testID="quick-equipment" icon="tools" label="Equipment" onPress={() => router.push("/(tabs)/equipment")} />
+          {staff && <Tile desktop={desktop} testID="quick-purchase-orders" icon="clipboard-list-outline" label="Purchase orders" onPress={() => router.push("/(tabs)/orders")} />}
           {staff ? (
-            <Tile testID="quick-counts" icon="clipboard-check-outline" label="Counts" onPress={() => router.push("/counts")} />
+            <Tile desktop={desktop} testID="quick-counts" icon="clipboard-check-outline" label="Counts" onPress={() => router.push("/counts")} />
           ) : (
-            <Tile testID="quick-my-requests" icon="clipboard-list-outline" label="My requests" onPress={() => router.push("/requests")} />
+            <Tile desktop={desktop} testID="quick-my-requests" icon="clipboard-list-outline" label="My requests" onPress={() => router.push("/requests")} />
           )}
-          <Tile testID="quick-trips" icon="calendar-month" label="Trips" onPress={() => router.push("/trips")} />
-          <Tile testID="quick-history" icon="timeline-text-outline" label="Stock history" onPress={() => router.push("/history")} />
+          <Tile desktop={desktop} testID="quick-trips" icon="calendar-month" label="Trips" onPress={() => router.push("/trips")} />
+          <Tile desktop={desktop} testID="quick-history" icon="timeline-text-outline" label="Stock history" onPress={() => router.push("/history")} />
         </View>
 
         {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : d && (

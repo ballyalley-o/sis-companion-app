@@ -1,0 +1,44 @@
+map_hash_bucket_size 128;
+map $cookie_sis_preview_access $preview_allowed {
+    default 0;
+    "__COOKIE_TOKEN__" 1;
+}
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+    client_max_body_size 9m;
+    auth_basic "SIS Companion temporary demo";
+    auth_basic_user_file /etc/nginx/conf.d/preview.htpasswd;
+    add_header Set-Cookie "sis_preview_access=__COOKIE_TOKEN__; Path=/; Secure; HttpOnly; SameSite=Lax";
+    add_header X-Robots-Tag "noindex, nofollow, noarchive";
+    resolver 127.0.0.11 valid=10s;
+
+    # The preview has no Zoho credentials and cannot connect a real organization.
+    location ^~ /api/zoho {
+        return 403;
+    }
+    # Cookie gate preserves the app's own Bearer Authorization header.
+    location /api/ {
+        auth_basic off;
+        if ($preview_allowed = 0) { return 401; }
+        set $api_backend http://api:8000;
+        proxy_pass $api_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        add_header Cache-Control "no-store";
+    }
+    location = /service-worker.js {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+    location = /manifest.json {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

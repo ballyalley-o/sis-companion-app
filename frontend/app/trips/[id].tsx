@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
 import { isStaff, useAuth } from "@/src/auth";
 import { fmtDate, useApi } from "@/src/hooks";
+import { GoogleMapsAddress } from "@/src/GoogleMapsAddress";
 import { Body, Button, Card, ErrorState, Field, H3, Header, IconButton, Label, Loading, Mono, Row, Sheet, StatusPill, useToast } from "@/src/ui";
 import { makeStyles, spacing, useTheme } from "@/src/theme";
 
@@ -54,6 +55,7 @@ export default function TripDetail() {
               <StatusPill status={t.status} testID="trip-status" />
             </Row>
             {!!t.site && <Body>{t.site}</Body>}
+            <GoogleMapsAddress address={t.address} testID="trip-detail-address" />
             {!!t.notes && <Body style={{ color: colors.onSurface }}>“{t.notes}”</Body>}
             {t.short_lines > 0 && <StatusPill status="low" label={`${t.short_lines} item(s) short`} testID="trip-short-badge" />}
           </Card>

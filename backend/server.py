@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Literal, Optional
+from urllib.parse import unquote, urlparse
 
 import base64
 import io
@@ -11,15 +12,17 @@ import re
 from difflib import SequenceMatcher, get_close_matches
 
 import bcrypt
-import httpx
 import jwt
 import qrcode
+from google.auth.transport.requests import Request as GoogleRequest
+from google.oauth2 import id_token
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, Response
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
+from pymongo.errors import DuplicateKeyError
 from starlette.middleware.cors import CORSMiddleware
 
 ROOT_DIR = Path(__file__).parent
@@ -33,6 +36,19 @@ client = AsyncIOMotorClient(os.environ["MONGO_URL"])
 db = client[os.environ["DB_NAME"]]
 JWT_SECRET = os.environ["JWT_SECRET"]
 APP_NAME = os.environ["APP_NAME"]
+PUBLIC_APP_URL = os.environ.get("PUBLIC_APP_URL", "").rstrip("/")
+APP_ENV = os.environ.get("APP_ENV", "production").lower()
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+CORS_ORIGINS = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "").split(",") if origin.strip()]
+if not CORS_ORIGINS:
+    if APP_ENV == "development":
+        CORS_ORIGINS = ["http://localhost:8081", "http://127.0.0.1:8081"]
+    else:
+        raise RuntimeError("Set CORS_ORIGINS to the exact deployed frontend origins")
+if APP_ENV == "production" and "*" in CORS_ORIGINS:
+    raise RuntimeError("Wildcard CORS origins are not allowed in production")
+if len(JWT_SECRET) < 32:
+    raise RuntimeError("JWT_SECRET must contain at least 32 characters")
 
 app = FastAPI(title="DrillStock Pro API")
 api = APIRouter(prefix="/api")
@@ -121,22 +137,21 @@ async def me(user=Depends(current_user)):
     return public_user(user)
 
 
-class SessionIn(BaseModel):
-    session_id: str
+class GoogleCredentialIn(BaseModel):
+    credential: str
 
 
-@api.post("/auth/session")
-async def google_session(body: SessionIn):
-    """Exchange Emergent Google-auth session_id (one-time) for the app's JWT."""
-    async with httpx.AsyncClient(timeout=20) as hc:
-        r = await hc.get("https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
-                         headers={"X-Session-ID": body.session_id})
-    if r.status_code != 200:
-        raise HTTPException(401, "Google sign-in failed or expired, please try again")
-    data = r.json()
+@api.post("/auth/google")
+async def google_login(body: GoogleCredentialIn):
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(503, "Google sign-in is not configured")
+    try:
+        data = await run_in_threadpool(id_token.verify_oauth2_token, body.credential, GoogleRequest(), GOOGLE_CLIENT_ID)
+    except ValueError:
+        raise HTTPException(401, "Google sign-in token is invalid or expired")
     email = (data.get("email") or "").strip().lower()
-    if not email:
-        raise HTTPException(401, "Google account has no email")
+    if not email or data.get("email_verified") is not True:
+        raise HTTPException(401, "Google account must have a verified email")
     user = await db.users.find_one({"email": email}, NOPROJ)
     if not user:
         user = {"id": nid(), "email": email, "password_hash": None, "name": data.get("name") or email.split("@")[0],
@@ -150,6 +165,15 @@ async def google_session(body: SessionIn):
     await audit(user, "auth.login_google", "user", user["id"], {})
     token = make_token(user)
     return {"session_token": token, "access_token": token, "user": public_user(user)}
+
+
+class LegacySessionIn(BaseModel):
+    session_id: str
+
+
+@api.post("/auth/session")
+async def retired_emergent_session(body: LegacySessionIn):
+    raise HTTPException(401, "Emergent sessions are no longer supported; use Google sign-in or password login")
 
 
 # ---------------------------------------------------------------- helpers
@@ -417,7 +441,7 @@ async def list_bins(warehouse_id: Optional[str] = None, user=Depends(current_use
     counts = {}
     for r in await db.stock.find({"bin_id": {"$in": [b["id"] for b in bins]}, "qty": {"$gt": 0}}, NOPROJ).to_list(10000):
         counts[r["bin_id"]] = counts.get(r["bin_id"], 0) + 1
-    return [{**b, "sku_count": counts.get(b["id"], 0), "qr_payload": f"BIN:{b['code']}"} for b in bins]
+    return [{**b, "sku_count": counts.get(b["id"], 0), "qr_payload": bin_qr_payload(b)} for b in bins]
 
 
 class BinIn(BaseModel):
@@ -435,6 +459,12 @@ def bin_title(b):
     seg = parts[-1]
     m = re.match(r"^[Bb](\d+)$", seg) if len(parts) >= 3 else None
     return f"BIN {m.group(1) if m else seg}".upper()
+
+
+def bin_qr_payload(b):
+    if PUBLIC_APP_URL:
+        return f"{PUBLIC_APP_URL}/bin/{b['id']}?view=1"
+    return f"BIN:{b['code']}"
 
 
 @api.post("/bins")
@@ -473,7 +503,7 @@ async def get_bin(bid: str, user=Depends(current_user)):
     items = [{"product_id": r["product_id"], "sku": prods[r["product_id"]]["sku"], "name": prods[r["product_id"]]["name"],
               "description": prods[r["product_id"]]["description"], "unit": prods[r["product_id"]]["unit"], "qty": r["qty"]}
              for r in rows if r["product_id"] in prods]
-    return {**b, "title": bin_title(b), "items": sorted(items, key=lambda x: x["sku"]), "qr_payload": f"BIN:{b['code']}"}
+    return {**b, "title": bin_title(b), "items": sorted(items, key=lambda x: x["sku"]), "qr_payload": bin_qr_payload(b)}
 
 
 def qr_data_uri(payload: str) -> str:
@@ -496,12 +526,19 @@ async def bin_labels(warehouse_id: Optional[str] = None, ids: str = "", user=Dep
         filt["id"] = {"$in": ids.split(",")}
     bins = await db.bins.find(filt, NOPROJ).sort("code", 1).to_list(500)
     return [{"id": b["id"], "code": b["code"], "title": bin_title(b), "warehouse_id": b["warehouse_id"], "zone": b.get("zone", ""),
-             "description": b.get("description", ""), "data_uri": qr_data_uri(f"BIN:{b['code']}")} for b in bins]
+             "description": b.get("description", ""), "data_uri": qr_data_uri(bin_qr_payload(b))} for b in bins]
 
 
 @api.get("/scan/{payload:path}")
 async def resolve_scan(payload: str, user=Depends(current_user)):
     raw = payload.strip()
+    parsed = urlparse(raw)
+    if parsed.scheme in {"http", "https"}:
+        parts = [part for part in unquote(parsed.path).split("/") if part]
+        if len(parts) == 2 and parts[0] == "bin":
+            b = await db.bins.find_one({"id": parts[1], "active": True}, NOPROJ)
+            if b:
+                return {"type": "bin", "id": b["id"], "code": b["code"]}
     code = raw.split(":", 1)[1] if ":" in raw else raw
     code = code.strip().upper()
     b = await db.bins.find_one({"code": code, "active": True}, NOPROJ)
@@ -722,6 +759,231 @@ async def list_receipts(warehouse_id: Optional[str] = None, user=Depends(roles("
     return await db.receipts.find({"warehouse_id": wh} if wh else {}, NOPROJ).sort("created_at", -1).to_list(200)
 
 
+# ------------------------------------------------------ Zoho purchase receiving
+def _demo_purchase_order():
+    return {
+        "purchaseorder_id": "PO-DEMO-10452-ID", "purchaseorder_number": "PO-DEMO-10452",
+        "reference_number": "REF-DEMO-778", "vendor_name": "Core Supplies Australia",
+        "status": "issued", "date": now().strftime("%Y-%m-%d"), "expected_delivery_date": now().strftime("%Y-%m-%d"),
+        "location_id": "", "demo": True,
+        "line_items": [
+            {"line_item_id": "demo-line-DB-HQ-001", "item_id": "ZI-DB-HQ-001", "sku": "DB-HQ-001", "name": "HQ Diamond Core Bit", "unit": "ea", "quantity": 6, "quantity_received": 0},
+            {"line_item_id": "demo-line-RD-HQ-3M", "item_id": "ZI-RD-HQ-3M", "sku": "RD-HQ-3M", "name": "HQ Drill Rod 3m", "unit": "ea", "quantity": 4, "quantity_received": 0},
+            {"line_item_id": "demo-line-MUD-BENT-25", "item_id": "ZI-MUD-BENT-25", "sku": "MUD-BENT-25", "name": "Bentonite 25kg", "unit": "bag", "quantity": 3, "quantity_received": 0},
+        ],
+    }
+
+
+async def _raw_purchase_orders():
+    settings = await zoho_settings()
+    if not zoho.is_live(settings):
+        if APP_ENV == "development":
+            return [_demo_purchase_order()], "mock"
+        raise HTTPException(400, "Connect Zoho in Live mode to load purchase orders")
+    try:
+        return await run_in_threadpool(zoho.list_purchase_orders, settings), "live"
+    except zoho.ZohoError as exc:
+        raise HTTPException(424, str(exc))
+
+
+async def _purchase_order_detail(order_id: str):
+    if order_id == "PO-DEMO-10452-ID" and APP_ENV == "development":
+        return _demo_purchase_order(), "mock"
+    settings = await live_settings()
+    try:
+        return await run_in_threadpool(zoho.get_purchase_order, settings, order_id), "live"
+    except zoho.ZohoError as exc:
+        raise HTTPException(424, str(exc))
+
+
+async def _local_order_received(order_id: str, line_id: str) -> int:
+    docs = await db.receipts.find({"purchase_order_id": order_id}, {"items": 1}).to_list(1000)
+    return sum(int(item.get("qty", 0)) for doc in docs for item in doc.get("items", [])
+               if item.get("purchase_order_line_id") == line_id)
+
+
+async def _normalize_purchase_order(raw: dict, mode: str):
+    order_id = str(raw.get("purchaseorder_id") or raw.get("id") or "")
+    warehouses = await db.warehouses.find({}, NOPROJ).to_list(20)
+    location = str(raw.get("location_id") or "")
+    warehouse_id = next((w["id"] for w in warehouses if location and str(w.get("zoho_warehouse_id") or "") == location), None)
+    if mode == "mock":
+        warehouse_id = "QLD"
+    lines = []
+    for index, item in enumerate(raw.get("line_items") or []):
+        line_id = str(item.get("line_item_id") or item.get("purchaseorder_item_id") or f"{order_id}:{index}")
+        item_id = str(item.get("item_id") or "")
+        sku = (item.get("sku") or "").strip().upper()
+        matchers = ([{"zoho_item_id": item_id}] if item_id else []) + ([{"sku": sku}] if sku else [])
+        product = await db.products.find_one({"$or": matchers}, NOPROJ) if matchers else None
+        ordered = max(0.0, float(item.get("quantity") or 0))
+        zoho_received = max(0.0, float(item.get("quantity_received") or 0))
+        whole_units = ordered.is_integer() and zoho_received.is_integer()
+        if whole_units:
+            ordered, zoho_received = int(ordered), int(zoho_received)
+        local_received = await _local_order_received(order_id, line_id)
+        lines.append({"line_id": line_id, "zoho_item_id": item_id, "product_id": product.get("id") if product else None,
+                      "sku": sku or (product or {}).get("sku", ""), "name": item.get("name") or (product or {}).get("name", "Item"),
+                      "unit": item.get("unit") or (product or {}).get("unit", "ea"), "ordered_qty": ordered, "whole_units": whole_units,
+                      "zoho_received_qty": zoho_received, "local_received_qty": local_received,
+                      "received_qty": zoho_received + local_received,
+                      "remaining_qty": max(0, ordered - zoho_received - local_received)})
+    return {"id": order_id, "number": raw.get("purchaseorder_number") or raw.get("number") or order_id,
+            "reference_number": raw.get("reference_number") or "", "supplier": raw.get("vendor_name") or raw.get("supplier") or "",
+            "status": raw.get("status") or "open", "date": raw.get("date") or "", "expected_delivery_date": raw.get("expected_delivery_date") or "",
+            "warehouse_id": warehouse_id, "mode": mode, "lines": lines,
+            "ordered_units": sum(line["ordered_qty"] for line in lines),
+            "remaining_units": sum(line["remaining_qty"] for line in lines)}
+
+
+@api.get("/purchase-orders")
+async def list_purchase_orders(user=Depends(roles("manager", "admin"))):
+    raw_orders, mode = await _raw_purchase_orders()
+    output = []
+    for raw in raw_orders[:200]:
+        status = str(raw.get("status") or "").lower()
+        if status in {"cancelled", "billed", "draft", "void"}:
+            continue
+        if raw.get("line_items"):
+            order = await _normalize_purchase_order(raw, mode)
+            if order["remaining_units"] <= 0:
+                continue
+        else:
+            warehouses = await db.warehouses.find({}, NOPROJ).to_list(20)
+            location = str(raw.get("location_id") or "")
+            warehouse_id = next((w["id"] for w in warehouses if location and str(w.get("zoho_warehouse_id") or "") == location), None)
+            order = {"id": str(raw.get("purchaseorder_id") or ""),
+                     "number": raw.get("purchaseorder_number") or "", "reference_number": raw.get("reference_number") or "",
+                     "supplier": raw.get("vendor_name") or "", "status": raw.get("status") or "open",
+                     "date": raw.get("date") or "", "expected_delivery_date": raw.get("expected_delivery_date") or "",
+                     "warehouse_id": warehouse_id, "mode": mode, "lines": [],
+                     "ordered_units": None, "remaining_units": None}
+        output.append(order)
+    if user["role"] == "manager":
+        output = [order for order in output if order.get("warehouse_id") in (None, user["warehouse_id"])]
+    return sorted(output, key=lambda order: order.get("expected_delivery_date") or order.get("date") or "", reverse=False)
+
+
+@api.get("/purchase-orders/lookup")
+async def lookup_purchase_order(reference: str = Query(min_length=2, max_length=100), user=Depends(roles("manager", "admin"))):
+    needle = reference.strip().casefold()
+    if not needle:
+        raise HTTPException(422, "Enter a purchase order number or reference")
+    raw_orders, mode = await _raw_purchase_orders()
+    raw = next((order for order in raw_orders if needle in {
+        str(order.get("purchaseorder_number") or "").casefold(), str(order.get("reference_number") or "").casefold()
+    }), None)
+    if not raw:
+        raise HTTPException(404, "No Zoho purchase order matched that reference")
+    if mode == "live":
+        raw, mode = await _purchase_order_detail(str(raw.get("purchaseorder_id")))
+    order = await _normalize_purchase_order(raw, mode)
+    if user["role"] == "manager" and order.get("warehouse_id") not in (None, user["warehouse_id"]):
+        raise HTTPException(403, "This order is mapped to another warehouse")
+    return order
+
+
+class POReceiveLine(BaseModel):
+    line_id: str
+    product_id: str
+    bin_id: str
+    qty: int = Field(gt=0, le=10000)
+
+
+class POReceiveIn(BaseModel):
+    warehouse_id: str
+    client_ref: str = Field(min_length=8, max_length=100)
+    notes: str = ""
+    items: List[POReceiveLine] = Field(min_length=1)
+
+
+@api.post("/purchase-orders/{order_id}/receive")
+async def receive_purchase_order(order_id: str, body: POReceiveIn, user=Depends(roles("manager", "admin"))):
+    ensure_wh_access(user, body.warehouse_id)
+    try:
+        await db.purchase_order_receiving_locks.insert_one({"_id": order_id, "client_ref": body.client_ref, "at": iso()})
+    except DuplicateKeyError:
+        lock = await db.purchase_order_receiving_locks.find_one({"_id": order_id})
+        if not lock or lock["client_ref"] != body.client_ref:
+            raise HTTPException(409, "Another receipt is being posted for this order. Finish or recover it before receiving again.")
+    try:
+        return await _receive_purchase_order_locked(order_id, body, user)
+    finally:
+        receipt = await db.receipts.find_one({"client_ref": body.client_ref}, NOPROJ)
+        if not receipt or receipt.get("status") == "received":
+            await db.purchase_order_receiving_locks.delete_one({"_id": order_id, "client_ref": body.client_ref})
+
+
+async def _receive_purchase_order_locked(order_id, body, user):
+    ensure_wh_access(user, body.warehouse_id)
+    prior = await db.receipts.find_one({"client_ref": body.client_ref}, NOPROJ)
+    if prior:
+        if prior.get("purchase_order_id") != order_id or prior["warehouse_id"] != body.warehouse_id:
+            raise HTTPException(409, "This receipt reference belongs to a different order or warehouse")
+        return prior if prior.get("status") == "received" else await _post_purchase_order_receipt(prior, user)
+    raw, mode = await _purchase_order_detail(order_id)
+    if str(raw.get("status") or "").lower() in {"cancelled", "draft", "void"}:
+        raise HTTPException(409, "This purchase order is not available for receiving")
+    order = await _normalize_purchase_order(raw, mode)
+    if order.get("warehouse_id") and order["warehouse_id"] != body.warehouse_id:
+        raise HTTPException(400, "Selected warehouse does not match the purchase order")
+    line_map = {line["line_id"]: line for line in order["lines"]}
+    receipts = []
+    seen = set()
+    for received in body.items:
+        line = line_map.get(received.line_id)
+        if not line or received.line_id in seen:
+            raise HTTPException(400, "Invalid or repeated purchase order line")
+        seen.add(received.line_id)
+        if not line["whole_units"]:
+            raise HTTPException(400, "Fractional order quantities require receiving review; this scanner counts whole units")
+        if not line["product_id"] or line["product_id"] != received.product_id:
+            raise HTTPException(400, f"{line['sku'] or line['name']} is not linked to a local stock item")
+        if received.qty > line["remaining_qty"]:
+            raise HTTPException(409, f"{line['sku']}: only {line['remaining_qty']} outstanding")
+        product = await db.products.find_one({"id": received.product_id}, NOPROJ)
+        bin_doc = await db.bins.find_one({"id": received.bin_id, "warehouse_id": body.warehouse_id, "active": True}, NOPROJ)
+        if not product or not bin_doc:
+            raise HTTPException(400, "Choose a valid product and active bin in this warehouse")
+        receipts.append({"product_id": product["id"], "sku": product["sku"], "name": product["name"], "unit": product["unit"],
+                         "bin_id": bin_doc["id"], "bin_code": bin_doc["code"], "qty": received.qty,
+                         "purchase_order_line_id": received.line_id})
+    receipt_id = nid()
+    receipt_number = f"GR-{now().strftime('%y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
+    doc = {"id": receipt_id, "number": receipt_number, "warehouse_id": body.warehouse_id,
+           "supplier": order["supplier"], "reference": order["number"], "purchase_order_id": order_id,
+           "purchase_order_number": order["number"], "notes": body.notes, "items": receipts,
+           "received_by": user["name"], "created_at": iso(), "client_ref": body.client_ref,
+           "zoho_txn_id": "LOCAL-ONLY", "zoho_mode": "local_only", "status": "posting"}
+    try:
+        await db.receipts.insert_one(dict(doc))
+    except DuplicateKeyError:
+        return await _receive_purchase_order_locked(order_id, body, user)
+    return await _post_purchase_order_receipt(doc, user)
+
+
+async def _post_purchase_order_receipt(doc, user):
+    """Resume a durable receipt; each stock row atomically remembers applied lines."""
+    for item in doc["items"]:
+        key = f"{doc['id']}:{item['purchase_order_line_id']}"
+        stock_key = {"warehouse_id": doc["warehouse_id"], "bin_id": item["bin_id"], "product_id": item["product_id"]}
+        await db.stock.update_one(stock_key, {"$setOnInsert": {"id": nid(), "qty": 0}}, upsert=True)
+        await db.stock.update_one({**stock_key, "po_receipt_keys": {"$ne": key}},
+                                  {"$inc": {"qty": item["qty"]}, "$addToSet": {"po_receipt_keys": key}})
+        await db.movements.update_one({"id": key}, {"$setOnInsert": {
+            "id": key, "at": doc["created_at"], "type": "receive", **stock_key,
+            "bin_code": item["bin_code"], "sku": item["sku"], "product_name": item["name"], "delta": item["qty"],
+            "ref": {"type": "receipt", "id": doc["id"], "number": doc["number"]},
+            "user_name": doc["received_by"], "note": f"Zoho PO {doc['reference']}"}}, upsert=True)
+    await db.audit_logs.update_one({"id": f"po-receipt:{doc['id']}"}, {"$setOnInsert": {
+        "id": f"po-receipt:{doc['id']}", "at": doc["created_at"], "user_id": user["id"], "user_name": doc["received_by"],
+        "role": user["role"], "action": "purchase_order.receive_local", "entity": "receipt", "entity_id": doc["id"],
+        "details": {"purchase_order": doc["reference"], "number": doc["number"], "zoho_stock_changed": False}}}, upsert=True)
+    await db.receipts.update_one({"id": doc["id"]}, {"$set": {"status": "received"}})
+    doc["status"] = "received"
+    return doc
+
+
 # ---------------------------------------------------------------- rig kits
 class KitItem(BaseModel):
     product_id: str
@@ -818,6 +1080,7 @@ class TripIn(BaseModel):
     driller_name: str
     rig_number: str
     site: str = ""
+    address: str = Field(default="", max_length=500)
     start_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     end_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     notes: str = ""
@@ -1684,22 +1947,37 @@ async def root():
     return {"app": "DrillStock Pro", "ok": True}
 
 
+@api.get("/health/live")
+async def health_live():
+    return {"ok": True}
+
+
+@api.get("/health/ready")
+async def health_ready():
+    await db.command("ping")
+    return {"ok": True, "database": "ready"}
+
+
 app.include_router(api)
-app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_credentials=False, allow_origins=CORS_ORIGINS,
+                   allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+                   allow_headers=["Authorization", "Content-Type"])
 
 
 @app.on_event("startup")
 async def startup():
     await db.users.create_index("email", unique=True)
+    await db.movements.create_index("id", unique=True)
+    await db.audit_logs.create_index("id", unique=True)
     await db.stock_requests.create_index("client_ref", unique=True)
     await db.receipts.create_index("client_ref", unique=True)
     await db.stock.create_index([("product_id", 1), ("bin_id", 1)], unique=True)
-    await seed_mod.seed(db)
-    try:
-        await run_in_threadpool(storage.init_storage)
-        logger.info("object storage ready")
-    except Exception as e:  # noqa: BLE001
-        logger.error("storage init failed: %s", e)
+    if os.environ.get("SEED_DEMO_DATA", "false").lower() == "true":
+        if APP_ENV != "development":
+            raise RuntimeError("SEED_DEMO_DATA can only be enabled in development")
+        await seed_mod.seed(db)
+    await run_in_threadpool(storage.init_storage)
+    logger.info("object storage ready")
 
 
 @app.on_event("shutdown")

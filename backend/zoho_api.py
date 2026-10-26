@@ -19,7 +19,8 @@ DCS = {
     "in": ("https://accounts.zoho.in", "https://www.zohoapis.in/inventory/v1"),
 }
 SCOPES = ("ZohoInventory.items.READ,ZohoInventory.settings.READ,"
-          "ZohoInventory.inventoryadjustments.READ,ZohoInventory.inventoryadjustments.CREATE")
+          "ZohoInventory.inventoryadjustments.READ,ZohoInventory.inventoryadjustments.CREATE,"
+          "ZohoInventory.purchaseorders.READ")
 
 _fernet = Fernet(os.environ["ZOHO_TOKEN_KEY"].encode())
 _token = {"value": None, "exp": 0.0, "key": None}
@@ -135,6 +136,22 @@ def list_items(s: dict, location_id: str = "", kind: str = "location"):
         if not (d.get("page_context") or {}).get("has_more_page"):
             return out
         page += 1
+
+
+def list_purchase_orders(s: dict):
+    """Read purchase order summaries from Zoho; never creates or changes orders."""
+    out, page = [], 1
+    while True:
+        data = call(s, "GET", "/purchaseorders", params={"page": page, "per_page": 200})
+        out.extend(data.get("purchaseorders", []))
+        if not (data.get("page_context") or {}).get("has_more_page"):
+            return out
+        page += 1
+
+
+def get_purchase_order(s: dict, purchase_order_id: str):
+    data = call(s, "GET", f"/purchaseorders/{purchase_order_id}")
+    return data.get("purchaseorder") or {}
 
 
 def item_qty(item: dict, location_id: str) -> float:

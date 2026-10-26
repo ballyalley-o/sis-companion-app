@@ -37,7 +37,7 @@ export default function Scan() {
       const r = await api<{ type: string; id: string; code: string }>(`/scan/${encodeURIComponent(payload.trim())}`);
       setFlash("ok");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      if (r.type === "bin") router.push({ pathname: "/bin/[id]", params: { id: r.id } });
+      if (r.type === "bin") router.push({ pathname: "/bin/[id]", params: { id: r.id, view: "1" } });
       else if (r.type === "equipment") router.push({ pathname: "/equipment/[id]", params: { id: r.id } });
       else router.push({ pathname: "/product/[id]", params: { id: r.id } });
     } catch (e: any) {

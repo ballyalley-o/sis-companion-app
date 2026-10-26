@@ -4,7 +4,9 @@ Version 1.0 | Target workflow; current QR implementation unverified
 
 ## Scan experience
 
-Staff scan a bin label and see current authorized contents. The QR carries a stable HTTPS route or opaque bin token, not mutable text or quantity. Display warehouse, bin code, status, refresh time, SKU, item name, unit, quantity, reservation/availability warnings and safe actions. Unknown, retired or unauthorized locations do not expose private inventory.
+Staff scan a bin label and see current authorized contents. When `PUBLIC_APP_URL` is set to the deployed HTTPS app origin, newly generated labels encode `/bin/{id}?view=1`; that route displays inventory without receive/take controls. The existing `BIN:{code}` payload remains the fallback when no app URL is configured. The QR contains neither mutable stock quantities nor permissions. Unknown, retired or unauthorized locations must not expose private inventory. Sign-in is still required by the API.
+
+The initial service worker caches only same-origin versioned static assets. It never caches API responses or bin contents, and the app does not work offline. Hosting must serve `manifest.json` and `service-worker.js`, use HTTPS and rewrite direct app routes such as `/bin/{id}` to the Expo single-page entry point.
 
 Historical reports describe bin identifiers such as SEC2-L1-B3 and a 100 x 50 mm label layout with title on the left and QR at right. Physical print dialog and label size were not verified in that report. Treat dimensions as proposed until actual print testing.
 

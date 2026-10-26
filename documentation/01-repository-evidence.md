@@ -4,7 +4,9 @@ Checked 24 October 2026 | Repository: https://github.com/ballyalley-o/sis-compan
 
 ## Inspection boundary
 
-GitHub metadata confirms the public repository, owner and default branch. Fetching README.md from main returned empty content. Code search returned no indexed matches. Dated commit reports were available, but source files and deployed application were not inspected. A prior conversation reported .emergent, backend, frontend, memory, test_reports and tests directories; that tree was not re-fetched.
+The public GitHub `main` source was cloned and inspected on 24 October 2026. The root README is empty. The source tree contains `.emergent`, `backend`, `frontend`, `documentation`, `tests` and related project data. The Emergent share preview was not accessible from this environment, so the deployed preview, its current revision and its hosting configuration were not inspected.
+
+Source confirms an Expo SDK 57 / React Native 0.86 application using Expo Router, React Native Web and Metro's `single` web output. The backend is FastAPI with Motor/MongoDB and a Zoho adapter. `expo-camera` is configured, while the scan screen explicitly uses manual entry on web. Existing bin screens, QR payload generation and API scan resolution are present. This confirms the committed source architecture; it does not confirm the current Emergent deployment or its runtime behavior.
 
 ## Dated evidence
 
@@ -30,7 +32,7 @@ GitHub metadata confirms the public repository, owner and default branch. Fetchi
 | Equipment loans | Reported in history | Inspect lifecycle, inspection and retention |
 | Zoho OAuth/import | Reported in history | Inspect scopes, encryption, mapping and exceptions |
 | Live Zoho mutation | Unknown/unverified | Test operations in sandbox and reconcile |
-| PWA installability | Planned/unverified | Check manifest, service worker, HTTPS and devices |
+| PWA installability | Manifest, icons and static-only service worker added in this change; browser install still unverified | Deploy on HTTPS, check host rewrites and test target browsers/devices |
 | Offline transactions | Earlier history said not built | Confirm source; do not enable without conflict design |
 | CI/CD, monitoring, backups | Unknown/unverified | Inspect deployment and perform drills |
 

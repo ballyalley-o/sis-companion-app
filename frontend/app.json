@@ -28,7 +28,16 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "DrillStock Pro",
+      "shortName": "DrillStock",
+      "lang": "en-AU",
+      "description": "Warehouse stock, bins and equipment for authorised staff.",
+      "scope": "/",
+      "startUrl": "/",
+      "display": "standalone",
+      "themeColor": "#111827",
+      "backgroundColor": "#000000"
     },
     "plugins": [
       "expo-router",
