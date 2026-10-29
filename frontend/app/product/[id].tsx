@@ -45,6 +45,8 @@ export default function ProductDetail() {
                 </View>
                 <Body style={{ fontSize: 26, fontWeight: "800", color: colors.onSurface }}>{l.qty} {p.unit}</Body>
               </Row>
+              <Button testID={`product-map-${l.bin_code}`} title="View on warehouse map" icon="map-marker" variant="ghost"
+                onPress={() => router.push({ pathname: "/warehouse-map", params: { product_id: p.id, wh: l.warehouse_id, bin_id: l.bin_id } })} />
               <Row>
                 <Button testID={`product-take-${l.bin_code}`} title="Take" icon="arrow-up-bold" style={{ flex: 1 }} disabled={l.qty <= 0}
                   onPress={() => router.push({ pathname: "/request/new", params: { type: "take", wh: l.warehouse_id, bin_id: l.bin_id, product_id: p.id } })} />

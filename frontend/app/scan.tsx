@@ -6,7 +6,8 @@ import { useRouter } from "expo-router";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
-import { Body, Button, Field, H2, Header, Icon, Label, Loading, useToast } from "@/src/ui";
+import { useAuth } from "@/src/auth";
+import { Body, Button, ChipRow, Field, H2, Header, Icon, Label, Loading, useToast } from "@/src/ui";
 import { makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
 const useStyles = makeStyles((c) => ({
@@ -22,6 +23,8 @@ export default function Scan() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user } = useAuth();
+  const [warehouse, setWarehouse] = useState(user?.warehouse_id || "QLD");
   const toast = useToast();
   const [perm, requestPerm] = useCameraPermissions();
   const [code, setCode] = useState("");
@@ -34,7 +37,7 @@ export default function Scan() {
     lock.current = true;
     setBusy(true);
     try {
-      const r = await api<{ type: string; id: string; code: string }>(`/scan/${encodeURIComponent(payload.trim())}`);
+      const r = await api<{ type: string; id: string; code: string }>(`/scan/${encodeURIComponent(payload.trim())}?warehouse_id=${encodeURIComponent(warehouse)}`);
       setFlash("ok");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       if (r.type === "bin") router.push({ pathname: "/bin/[id]", params: { id: r.id, view: "1" } });
@@ -86,6 +89,7 @@ export default function Scan() {
   return (
     <View style={s.root} testID="scan-screen">
       <Header title="Scan" subtitle="Bin QR · Equipment ID · SKU" />
+      <ChipRow testIDPrefix="scan-warehouse" options={(user?.role === "manager" ? [user.warehouse_id || "QLD"] : ["QLD", "NSW"]).map(value => ({ label: value, value }))} value={warehouse} onChange={setWarehouse} />
       <KeyboardAwareScrollView bottomOffset={24} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}>
         {camera()}
         <View style={s.bottom}>

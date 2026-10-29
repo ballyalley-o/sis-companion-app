@@ -64,6 +64,9 @@ export default function EquipmentDetail() {
             </Row>
           </Card>
 
+          <Button testID="equipment-map-button" title="View on warehouse map" icon="map-marker" variant="ghost"
+            onPress={() => router.push({ pathname: "/warehouse-map", params: { equipment_id: e.id, wh: e.warehouse_id } })} />
+
           {loan && (
             <Card style={{ gap: spacing.sm, borderColor: e.overdue ? colors.error : colors.warning, borderWidth: 2 }} testID="equipment-current-loan">
               <Label>Currently signed out</Label>

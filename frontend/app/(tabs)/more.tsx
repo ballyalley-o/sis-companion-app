@@ -8,6 +8,7 @@ import { makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
 type Item = { icon: IconName; label: string; sub: string; href: Href; roles: string[]; id: string };
 const ITEMS: Item[] = [
+  { id: "warehouse-map", icon: "map-marker", label: "Warehouse map", sub: "Floor plan and product bin locations", href: "/warehouse-map", roles: ["driller", "manager", "admin"] },
   { id: "trips", icon: "calendar-month", label: "Trip calendar", sub: "Plan trips & pre-order stock", href: "/trips", roles: ["driller", "manager", "admin"] },
   { id: "history", icon: "timeline-text-outline", label: "Stock history", sub: "Trace every movement of an item", href: "/history", roles: ["driller", "manager", "admin"] },
   { id: "reorders", icon: "cart-arrow-down", label: "Reorders", sub: "Purchase reorders for trips & low stock", href: "/reorders", roles: ["manager", "admin"] },

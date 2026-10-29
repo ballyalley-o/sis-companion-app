@@ -347,7 +347,7 @@ async def list_products(q: str = "", warehouse_id: Optional[str] = None, user=De
     wh = scope_wh(user, warehouse_id) if user["role"] == "manager" else warehouse_id
     filt = {}
     if q.strip():
-        rx = {"$regex": q.strip(), "$options": "i"}
+        rx = {"$regex": re.escape(q.strip()), "$options": "i"}
         filt = {"$or": [{"sku": rx}, {"name": rx}, {"description": rx}]}
     prods = await db.products.find(filt, NOPROJ).sort("sku", 1).to_list(200)
     return [await product_with_stock(p, wh) for p in prods]
@@ -471,7 +471,7 @@ def bin_qr_payload(b):
 async def create_bin(body: BinIn, user=Depends(roles("admin", "manager"))):
     ensure_wh_access(user, body.warehouse_id)
     code = body.code.strip().upper()
-    if await db.bins.find_one({"code": code}):
+    if await db.bins.find_one({"code": code, "warehouse_id": body.warehouse_id, "active": True}):
         raise HTTPException(409, "Bin code already exists")
     doc = {"id": nid(), "code": code, "warehouse_id": body.warehouse_id, "zone": body.zone, "description": body.description,
            "name": body.name.strip(), "active": True}
@@ -493,12 +493,26 @@ async def archive_bin(bid: str, user=Depends(roles("admin", "manager"))):
     return {"ok": True}
 
 
+async def resolve_bin_id(bid):
+    seen = set()
+    warehouse = None
+    while bid and bid not in seen:
+        seen.add(bid)
+        b = await db.bins.find_one({"id": bid}, NOPROJ)
+        if not b or warehouse and b["warehouse_id"] != warehouse:
+            return None
+        if not b.get("redirect_bin_id"):
+            return b
+        warehouse, bid = b["warehouse_id"], b["redirect_bin_id"]
+    return None
+
+
 @api.get("/bins/{bid}")
 async def get_bin(bid: str, user=Depends(current_user)):
-    b = await db.bins.find_one({"id": bid}, NOPROJ)
+    b = await resolve_bin_id(bid)
     if not b:
         raise HTTPException(404, "Bin not found")
-    rows = await db.stock.find({"bin_id": bid}, NOPROJ).to_list(1000)
+    rows = await db.stock.find({"bin_id": b["id"]}, NOPROJ).to_list(1000)
     prods = {p["id"]: p for p in await db.products.find({"id": {"$in": [r["product_id"] for r in rows]}}, NOPROJ).to_list(1000)}
     items = [{"product_id": r["product_id"], "sku": prods[r["product_id"]]["sku"], "name": prods[r["product_id"]]["name"],
               "description": prods[r["product_id"]]["description"], "unit": prods[r["product_id"]]["unit"], "qty": r["qty"]}
@@ -530,19 +544,25 @@ async def bin_labels(warehouse_id: Optional[str] = None, ids: str = "", user=Dep
 
 
 @api.get("/scan/{payload:path}")
-async def resolve_scan(payload: str, user=Depends(current_user)):
+async def resolve_scan(payload: str, warehouse_id: Optional[str] = None, user=Depends(current_user)):
     raw = payload.strip()
     parsed = urlparse(raw)
     if parsed.scheme in {"http", "https"}:
         parts = [part for part in unquote(parsed.path).split("/") if part]
         if len(parts) == 2 and parts[0] == "bin":
-            b = await db.bins.find_one({"id": parts[1], "active": True}, NOPROJ)
-            if b:
+            b = await resolve_bin_id(parts[1])
+            if b and b.get("active"):
+                ensure_wh_access(user, b["warehouse_id"])
                 return {"type": "bin", "id": b["id"], "code": b["code"]}
     code = raw.split(":", 1)[1] if ":" in raw else raw
     code = code.strip().upper()
-    b = await db.bins.find_one({"code": code, "active": True}, NOPROJ)
-    if b:
+    wh = scope_wh(user, warehouse_id or user.get("warehouse_id"))
+    matches = await db.bins.find({"$or": [{"code": code}, {"aliases": code}], "active": True,
+                                  **({"warehouse_id": wh} if wh else {})}, NOPROJ).to_list(2)
+    if len(matches) > 1:
+        raise HTTPException(409, "Select a warehouse to look up this bin code")
+    if matches:
+        b = matches[0]
         return {"type": "bin", "id": b["id"], "code": b["code"]}
     e = await db.equipment.find_one({"code": code}, NOPROJ)
     if e:
@@ -1581,16 +1601,19 @@ class EquipmentIn(BaseModel):
     name: str
     category: str = ""
     warehouse_id: str
+    home_bin_id: Optional[str] = None
 
 
 @api.post("/equipment")
 async def create_equipment(body: EquipmentIn, user=Depends(roles("admin", "manager"))):
     ensure_wh_access(user, body.warehouse_id)
+    if body.home_bin_id and not await db.bins.find_one({"id": body.home_bin_id, "warehouse_id": body.warehouse_id, "active": True}):
+        raise HTTPException(400, "Storage bin must be active and in the equipment warehouse")
     code = body.code.strip().upper()
     if await db.equipment.find_one({"code": code}):
         raise HTTPException(409, "Equipment ID already exists")
     doc = {"id": nid(), "code": code, "name": body.name, "category": body.category, "warehouse_id": body.warehouse_id,
-           "status": "available", "notes": "", "current_loan_id": None}
+           "status": "available", "notes": "", "current_loan_id": None, "home_bin_id": body.home_bin_id}
     await db.equipment.insert_one(dict(doc))
     await audit(user, "equipment.create", "equipment", doc["id"], {"code": code})
     return doc

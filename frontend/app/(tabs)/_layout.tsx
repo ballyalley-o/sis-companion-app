@@ -1,4 +1,4 @@
-import { Redirect, Tabs } from "expo-router";
+import { Redirect, Tabs, useRouter } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { Platform, Pressable, useWindowDimensions, View } from "react-native";
 import { useAuth } from "@/src/auth";
@@ -14,6 +14,7 @@ const sidebarStyles = makeStyles((c) => ({
 }));
 
 function DesktopSidebar({ state, descriptors, navigation, user }: any) {
+  const router = useRouter();
   const s = sidebarStyles();
   const { colors } = useTheme();
   const items = state.routes.filter((route: any) => descriptors[route.key]?.options?.href !== null
@@ -37,6 +38,10 @@ function DesktopSidebar({ state, descriptors, navigation, user }: any) {
             </Pressable>
           );
         })}
+        <Pressable testID="sidebar-warehouse-map" onPress={() => router.push("/warehouse-map")} style={s.item}>
+          <Icon name="map-marker" size={20} color={colors.onSurfaceSecondary} />
+          <Body style={{ color: colors.onSurfaceSecondary, fontWeight: "600", fontSize: 14 }}>Warehouse map</Body>
+        </Pressable>
       </View>
       <View style={{ marginTop: "auto", padding: spacing.sm }}><Label>QLD · NSW STOCK OPERATIONS</Label></View>
     </View>

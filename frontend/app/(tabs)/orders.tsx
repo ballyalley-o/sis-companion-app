@@ -141,7 +141,7 @@ export default function Orders() {
       } });
       queryClient.invalidateQueries();
       toast(`${receipt.number} finished posting`, "success");
-      if (order?.id === receipt.purchase_order_id) await loadOrder(order.number);
+      if (order && order.id === receipt.purchase_order_id) await loadOrder(order.number);
     } catch (error: any) {
       toast(error.message || "Unable to resume receipt", "error");
     } finally {
