@@ -1,7 +1,8 @@
 import { Platform } from "react-native";
 import { storage } from "@/src/utils/storage";
 
-export const BASE = `${process.env.EXPO_PUBLIC_BACKEND_URL}/api`;
+// Web previews use same-origin /api when no separate backend URL is configured.
+export const BASE = `${(process.env.EXPO_PUBLIC_BACKEND_URL || "").replace(/\/+$/, "")}/api`;
 export const TOKEN_KEY = "drillstock_token";
 
 let token = "";
