@@ -9,6 +9,11 @@ The locator performs read-only API calls; it makes no external map service calls
 
 ## Search and radar
 
+Area indicators identify SEC1 as **Operations** and SEC2, SEC3 and SEC4 as
+**Consumables**. A colour-keyed legend remains readable at mobile widths; the
+selected item's location path and detailed rack heading also identify its area.
+These labels describe warehouse areas, not product categories or access permissions.
+
 Search by product name/SKU or equipment name/code/category directly on the map.
 Select a result to show its recorded warehouse, aisle, section, level and bin.
 Multiple product locations can be selected separately. Product queries use literal text,

@@ -114,7 +114,7 @@ export default function WarehouseMap() {
               <Label>{away ? "Home storage · equipment currently away" : "Item location"}{item.map_demo ? " · Test item" : ""}</Label><H3>{item.name}</H3>
               {locations.length > 1 && <ChipRow testIDPrefix="map-location" options={locations.map(l => ({ value: l.bin_id, label: `${l.bin_code} · ${l.qty}` }))} value={selected?.bin_id} onChange={setChosen} />}
               <Mono testID="map-location-code">{selected?.bin_code || "No storage bin assigned"}</Mono>
-              {target ? <Body testID="map-location-description">{AISLES[target.section.code]} → {target.section.code} → Level {target.level} → Bay {target.bay}{pick?.kind === "product" ? ` · ${selected.qty} ${item.unit} on hand` : ""}</Body> : <Body>This location is not mapped. Existing stock locations have been preserved.</Body>}
+              {target ? <Body testID="map-location-description">{target.section.area} → {AISLES[target.section.code]} → {target.section.code} → Level {target.level} → Bay {target.bay}{pick?.kind === "product" ? ` · ${selected.qty} ${item.unit} on hand` : ""}</Body> : <Body>This location is not mapped. Existing stock locations have been preserved.</Body>}
               {target && <Button testID="map-focus-bin" title="Show exact bin" variant="primary" icon="radar" onPress={focusRack} />}
               {away && <Body>Equipment is {item.status.replaceAll("_", " ")}. The marker shows its assigned home bin, not its current physical position.</Body>}
               <Button title={pick?.kind === "equipment" ? "Equipment details" : "Product details"} variant="secondary" icon="information-outline" onPress={() => router.push({ pathname: pick?.kind === "equipment" ? "/equipment/[id]" : "/product/[id]", params: { id: item.id, wh } })} />
@@ -123,17 +123,26 @@ export default function WarehouseMap() {
             {bins.isError && <ErrorState message={(bins.error as Error).message} onRetry={bins.refetch} />}
           </Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><Icon name="radar" size={22} color={colors.brandPrimary} /><Label>Floor overview</Label></View>
+          <View testID="map-area-legend" style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+            {["Operations", "Consumables"].map(area => <View key={area} style={{ flexGrow: 1, flexBasis: 180, padding: 12, borderRadius: 8, backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.border, gap: 8 }}>
+              <Label>{area} area</Label>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>{mapSections.filter(s => s.area === area).map(s => <View key={s.code} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: s.color }} /><Body style={{ color: colors.onSurface, fontWeight: "700" }}>{s.code}</Body>
+              </View>)}</View>
+            </View>)}
+          </View>
           {target && <Body style={{ fontSize: 12 }}>Tap the radar section to jump to {target.code} in the detailed rack view.</Body>}
           <View testID="warehouse-map-canvas" style={{ width: mapWidth, height: 735 * scale, backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8 }}>
             {[{ x: 250, y: 245, text: "A01 / MAIN CROSS AISLE" }, { x: 260, y: 458, text: "A02 / LOWER CROSS AISLE" }, { x: 42, y: 510, text: "RECEIVING ↑" }, { x: 760, y: 370, text: "A03 / RACK ACCESS" }].map(label => <Text key={label.text} style={{ position: "absolute", left: label.x * scale, top: label.y * scale, fontSize: Math.max(8, 13 * scale), color: colors.muted }}>{label.text}</Text>)}
             <View style={{ position: "absolute", left: 45 * scale, top: 330 * scale, width: 370 * scale, height: 85 * scale, backgroundColor: colors.surfaceTertiary, justifyContent: "center", padding: 10 * scale }}><Text style={{ color: colors.onSurfaceSecondary, fontSize: Math.max(8, 14 * scale) }}>DISPATCH → STAGING</Text></View>
             {mapSections.map(s => {
               const selectedSection = section.code === s.code, hit = target?.section.code === s.code;
-              return <Pressable key={s.code} testID={`map-section-${s.code}`} accessibilityRole="button" accessibilityLabel={hit ? `Show exact bin ${target?.code}` : `Explore ${s.code}`} onPress={() => {
+              return <Pressable key={s.code} testID={`map-section-${s.code}`} accessibilityRole="button" accessibilityLabel={hit ? `Show exact bin ${target?.code} in ${s.area}` : `Explore ${s.code}, ${s.area} area`} onPress={() => {
                 if (hit) { focusRack(); return; }
                 setPick(null); setChosen(undefined); setSectionCode(s.code);
               }} style={{ position: "absolute", left: s.x * scale, top: s.y * scale, width: s.width * scale, height: s.height * scale, borderWidth: selectedSection ? 2 : 1, borderColor: s.color, backgroundColor: selectedSection ? colors.surfaceTertiary : colors.surface, padding: 8 * scale, gap: 7 * scale }}>
                 <Text style={{ color: s.color, fontWeight: "800", fontSize: Math.max(10, 18 * scale) }}>{s.code}</Text>
+                {s.width * scale >= 140 && <Text testID={`map-area-${s.code}`} style={{ color: colors.onSurfaceSecondary, fontSize: Math.max(10, 12 * scale) }}>{s.area}</Text>}
                 <View style={{ flex: 1, flexDirection: s.code === "SEC2" ? "column" : "row", gap: 3 * scale }}>
                   {Array.from({ length: s.bays }, (_, index) => {
                     const marked = hit && s.code !== "SEC4" && target?.bay === index + 1;
@@ -148,7 +157,7 @@ export default function WarehouseMap() {
           </View>
           <ChipRow testIDPrefix="map-rack-section" options={mapSections.map(s => ({ label: s.code, value: s.code }))} value={section.code} onChange={code => { setPick(null); setChosen(undefined); setSectionCode(code); }} />
           <View testID="warehouse-rack-destination" onLayout={event => { rackPosition.current.rack = event.nativeEvent.layout.y; }}><Card style={{ gap: 12 }}>
-            <Label>{section.code} · {AISLES[section.code]}</Label><Body>Rack elevation · Level 1 is the bottom{target ? ` · Target: ${target.code}` : ""}</Body>
+            <Label>{section.code} · {section.area} area · {AISLES[section.code]}</Label><Body>Rack elevation · Level 1 is the bottom{target ? ` · Target: ${target.code}` : ""}</Body>
             <ScrollView horizontal ref={rackScroll} testID="warehouse-rack-view" onContentSizeChange={scrollToTarget}>
               <View style={{ width: Math.max(900, section.bays * 64 + 130), gap: 12, paddingVertical: 12 }}>
                 {Array.from({ length: section.levels }, (_, index) => section.levels - index).map(level => <View key={level} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
