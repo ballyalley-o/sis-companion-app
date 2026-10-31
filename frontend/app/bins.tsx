@@ -77,7 +77,7 @@ export default function Bins() {
         <FlatList data={q.data} keyExtractor={(b) => b.id}
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: insets.bottom + spacing.xl }}
           refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={q.refetch} />}
-          ListHeaderComponent={<Button testID="bins-print-all" title={`Print all ${wh} labels (100×50mm)`} icon="printer" loading={printing} onPress={() => print()} />}
+          ListHeaderComponent={<Button testID="bins-print-all" title={`Print all ${wh} labels (100×30mm)`} icon="printer" loading={printing} onPress={() => print()} />}
           ListEmptyComponent={<EmptyState icon="grid-off" title="No bins" />}
           renderItem={({ item: b }) => (
             <Card testID={`bin-card-${b.code}`} onPress={() => router.push({ pathname: "/bin/[id]", params: { id: b.id } })}>

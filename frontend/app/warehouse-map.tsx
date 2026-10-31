@@ -31,6 +31,13 @@ function Radar({ small = false }: { small?: boolean }) {
 const AISLES: Record<string, string> = { SEC1: "A01 · Main cross aisle", SEC2: "A03 · Rack access", SEC3: "A02 · Lower cross aisle", SEC4: "A02 · Lower cross aisle" };
 type Pick = { kind: "product" | "equipment"; id: string };
 
+function AreaChip({ area, color, compact = false }: { area: string; color: string; compact?: boolean }) {
+  const { colors } = useTheme();
+  return <View style={{ flexShrink: 1, borderRadius: 99, borderWidth: 1, borderColor: color, backgroundColor: colors.surfaceTertiary, paddingHorizontal: compact ? 5 : 8, paddingVertical: 3 }}>
+    <Text numberOfLines={1} style={{ color: colors.onSurfaceSecondary, fontSize: compact ? 9 : 10, fontWeight: "600" }}>{area}</Text>
+  </View>;
+}
+
 export default function WarehouseMap() {
   const params = useLocalSearchParams<{ product_id?: string; equipment_id?: string; wh?: string; bin_id?: string }>();
   const { user, ready } = useAuth();
@@ -124,11 +131,10 @@ export default function WarehouseMap() {
           </Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><Icon name="radar" size={22} color={colors.brandPrimary} /><Label>Floor overview</Label></View>
           <View testID="map-area-legend" style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-            {["Operations", "Consumables"].map(area => <View key={area} style={{ flexGrow: 1, flexBasis: 180, padding: 12, borderRadius: 8, backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.border, gap: 8 }}>
-              <Label>{area} area</Label>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>{mapSections.filter(s => s.area === area).map(s => <View key={s.code} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: s.color }} /><Body style={{ color: colors.onSurface, fontWeight: "700" }}>{s.code}</Body>
-              </View>)}</View>
+            {mapSections.map(s => <View key={s.code} style={{ flexDirection: "row", alignItems: "center", gap: 7, paddingVertical: 4 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 3, backgroundColor: s.color }} />
+              <Text style={{ color: colors.onSurface, fontSize: 12, fontWeight: "700" }}>{s.code}</Text>
+              <AreaChip area={s.area} color={s.color} />
             </View>)}
           </View>
           {target && <Body style={{ fontSize: 12 }}>Tap the radar section to jump to {target.code} in the detailed rack view.</Body>}
@@ -141,8 +147,10 @@ export default function WarehouseMap() {
                 if (hit) { focusRack(); return; }
                 setPick(null); setChosen(undefined); setSectionCode(s.code);
               }} style={{ position: "absolute", left: s.x * scale, top: s.y * scale, width: s.width * scale, height: s.height * scale, borderWidth: selectedSection ? 2 : 1, borderColor: s.color, backgroundColor: selectedSection ? colors.surfaceTertiary : colors.surface, padding: 8 * scale, gap: 7 * scale }}>
-                <Text style={{ color: s.color, fontWeight: "800", fontSize: Math.max(10, 18 * scale) }}>{s.code}</Text>
-                {s.width * scale >= 140 && <Text testID={`map-area-${s.code}`} style={{ color: colors.onSurfaceSecondary, fontSize: Math.max(10, 12 * scale) }}>{s.area}</Text>}
+                <View testID={`map-area-${s.code}`} style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                  <Text style={{ color: s.color, fontWeight: "800", fontSize: Math.max(8, 16 * scale) }}>{s.code}</Text>
+                  <AreaChip area={s.area} color={s.color} compact />
+                </View>
                 <View style={{ flex: 1, flexDirection: s.code === "SEC2" ? "column" : "row", gap: 3 * scale }}>
                   {Array.from({ length: s.bays }, (_, index) => {
                     const marked = hit && s.code !== "SEC4" && target?.bay === index + 1;
@@ -157,7 +165,10 @@ export default function WarehouseMap() {
           </View>
           <ChipRow testIDPrefix="map-rack-section" options={mapSections.map(s => ({ label: s.code, value: s.code }))} value={section.code} onChange={code => { setPick(null); setChosen(undefined); setSectionCode(code); }} />
           <View testID="warehouse-rack-destination" onLayout={event => { rackPosition.current.rack = event.nativeEvent.layout.y; }}><Card style={{ gap: 12 }}>
-            <Label>{section.code} · {section.area} area · {AISLES[section.code]}</Label><Body>Rack elevation · Level 1 is the bottom{target ? ` · Target: ${target.code}` : ""}</Body>
+            <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+              <Label>{section.code}</Label><AreaChip area={section.area} color={section.color} />
+              <Label style={{ fontSize: 10 }}>{AISLES[section.code]}</Label>
+            </View><Body>Rack elevation · Level 1 is the bottom{target ? ` · Target: ${target.code}` : ""}</Body>
             <ScrollView horizontal ref={rackScroll} testID="warehouse-rack-view" onContentSizeChange={scrollToTarget}>
               <View style={{ width: Math.max(900, section.bays * 64 + 130), gap: 12, paddingVertical: 12 }}>
                 {Array.from({ length: section.levels }, (_, index) => section.levels - index).map(level => <View key={level} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>

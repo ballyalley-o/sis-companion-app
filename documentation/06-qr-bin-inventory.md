@@ -4,6 +4,13 @@ Version 1.0 | Target workflow; current QR implementation unverified
 
 ## Scan experience
 
+The bin contents page uses a bounded two-column desktop layout and stacks its sticker,
+location details and stock list on smaller screens. Read-only links keep all stock-changing
+controls hidden. Sticker previews and print output use a wide 100 × 30 mm layout:
+large bin title on the left, section-coloured location code below it, and a square QR code
+on the right. This print size is an assumption based on the supplied wide sticker example.
+Custom titles are escaped in print HTML, and QR loading errors provide a retry action.
+
 Staff scan a bin label and see current authorized contents. When `PUBLIC_APP_URL` is set to the deployed HTTPS app origin, newly generated labels encode `/bin/{id}?view=1`; that route displays inventory without receive/take controls. The existing `BIN:{code}` payload remains the fallback when no app URL is configured. The QR contains neither mutable stock quantities nor permissions. Unknown, retired or unauthorized locations must not expose private inventory. Sign-in is still required by the API.
 
 The initial service worker caches only same-origin versioned static assets. It never caches API responses or bin contents, and the app does not work offline. Hosting must serve `manifest.json` and `service-worker.js`, use HTTPS and rewrite direct app routes such as `/bin/{id}` to the Expo single-page entry point.
