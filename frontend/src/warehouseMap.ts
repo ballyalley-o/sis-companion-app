@@ -1,9 +1,9 @@
 // Reference geometry follows the supplied Revision 03 overview, not surveyed dimensions.
 export const mapSections = [
-  { code: "SEC1", bays: 15, levels: 4, color: "#d6343b", x: 30, y: 25, width: 1000, height: 140 },
-  { code: "SEC2", bays: 6, levels: 2, color: "#c86708", x: 910, y: 185, width: 120, height: 320 },
-  { code: "SEC3", bays: 12, levels: 4, color: "#2865df", x: 735, y: 535, width: 295, height: 170 },
-  { code: "SEC4", bays: 14, levels: 4, color: "#128153", x: 30, y: 535, width: 680, height: 170 },
+  { code: "SEC1", area: "Operations", bays: 15, levels: 4, color: "#d6343b", x: 30, y: 25, width: 1000, height: 140 },
+  { code: "SEC2", area: "Consumables", bays: 6, levels: 2, color: "#c86708", x: 910, y: 185, width: 120, height: 320 },
+  { code: "SEC3", area: "Consumables", bays: 12, levels: 4, color: "#2865df", x: 735, y: 535, width: 295, height: 170 },
+  { code: "SEC4", area: "Consumables", bays: 14, levels: 4, color: "#128153", x: 30, y: 535, width: 680, height: 170 },
 ];
 
 // Counts are indexed from ground level (L1) upward. SEC4 lower-level numbering
