@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { api, uploadPhoto } from "lib/api"
 import { EquipmentSignature, hasInk, type Signature } from "component/equipment-signature"
 import { useAuth } from "state/auth"
-import { useApi } from "lib/hooks"
+import { useApi } from "lib/hook"
 import { Body, Button, ChipRow, Field, H3, Header, Icon, Label, Loading, Row, Sheet, useToast } from "component/ui"
 import { makeStyles, radius, spacing, useTheme } from "design/theme"
 

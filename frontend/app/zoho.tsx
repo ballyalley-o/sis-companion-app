@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { api } from "lib/api"
-import { fmtDate, useApi } from "lib/hooks"
+import { fmtDate, useApi } from "lib/hook"
 import { Body, Button, Card, Chip, ChipRow, Field, H3, Header, Label, Loading, Mono, Row, StatusPill, useToast } from "component/ui"
 import { makeStyles, spacing, useTheme } from "design/theme"
 

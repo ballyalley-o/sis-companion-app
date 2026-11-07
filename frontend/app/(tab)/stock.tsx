@@ -4,8 +4,8 @@ import { FlatList, RefreshControl, TextInput, View } from "react-native"
 import { useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useAuth } from "state/auth"
-import { useApi } from "lib/hooks"
-import { usesNativeTabs } from "config/navigation"
+import { useApi } from "lib/hook"
+import { usesNativeTab } from "config/navigation"
 import { CommonItems, DidYouMean } from "component/suggest"
 import { Body, Card, ChipRow, EmptyState, ErrorState, H1, Icon, IconButton, Label, Loading, Mono, Row, StatusPill } from "component/ui"
 import { fonts, makeStyles, radius, spacing, useTheme } from "design/theme"
@@ -33,7 +33,7 @@ export default function Stock() {
   }, [text])
   const effWh = user?.role === "manager" ? user.warehouse_id! : wh
   const res = useApi<any[]>(`/products?warehouse_id=${effWh}&q=${encodeURIComponent(q)}`)
-  const bottomChrome = usesNativeTabs ? insets.bottom : 0
+  const bottomChrome = usesNativeTab ? insets.bottom : 0
 
   return (
     <View style={s.root} testID="stock-screen">

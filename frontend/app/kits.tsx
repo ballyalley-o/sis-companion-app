@@ -2,7 +2,7 @@ import { PATH } from 'route/path'
 import { FlatList, RefreshControl, View } from "react-native"
 import { useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { useApi } from "lib/hooks"
+import { useApi } from "lib/hook"
 import { Body, Card, EmptyState, ErrorState, Header, IconButton, Label, Mono, Row, StatusPill, Loading } from "component/ui"
 import { makeStyles, spacing, useTheme } from "design/theme"
 

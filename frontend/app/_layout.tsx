@@ -21,9 +21,9 @@ export default function RootLayout() {
   // Prewarm icon + brand fonts so icons render in Expo Go (Android) too.
   const [loaded, error] = useFonts({
     MaterialDesignIcons: require("@react-native-vector-icons/material-design-icons/fonts/MaterialDesignIcons.ttf"),
-    "BarlowCondensed-Bold": require("../assets/fonts/BarlowCondensed-Bold.ttf"),
-    "BarlowCondensed-SemiBold": require("../assets/fonts/BarlowCondensed-SemiBold.ttf"),
-    Manrope: require("../assets/fonts/Manrope.ttf"),
+    "BarlowCondensed-Bold": require("../asset/font/BarlowCondensed-Bold.ttf"),
+    "BarlowCondensed-SemiBold": require("../asset/font/BarlowCondensed-SemiBold.ttf"),
+    Manrope: require("../asset/font/Manrope.ttf"),
   })
   if (!loaded && !error) return <View style={{ flex: 1, backgroundColor: colors.surface }} />
 

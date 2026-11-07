@@ -10,14 +10,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { api, fileUrl, uploadPhoto } from "lib/api"
 import { EquipmentSignature } from "component/equipment-signature"
 import { isStaff, useAuth } from "state/auth"
-import { fmtDate, useApi } from "lib/hooks"
+import { fmtDate, useApi } from "lib/hook"
 import { Body, Button, Card, ErrorState, Field, H2, H3, Header, Label, Loading, Mono, Row, StatusPill, useToast } from "component/ui"
 import { makeStyles, radius, spacing, useTheme } from "design/theme"
 
 const demoPhotos: Record<string, number> = {
-  "COMP-001": require("../../assets/equipment/comp-001.jpg"),
-  "COMP-002": require("../../assets/equipment/comp-002.jpg"),
-  "REEL-001": require("../../assets/equipment/reel-001.jpg"),
+  "COMP-001": require("../../asset/equipment/comp-001.jpg"),
+  "COMP-002": require("../../asset/equipment/comp-002.jpg"),
+  "REEL-001": require("../../asset/equipment/reel-001.jpg"),
 }
 
 const useStyles = makeStyles((c) => ({

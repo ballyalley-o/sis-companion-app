@@ -1,29 +1,29 @@
-import { PATH } from 'route/path'
-import { Pressable, RefreshControl, ScrollView, View } from "react-native"
-import { useRouter } from "expo-router"
-import { useQueryClient } from "@tanstack/react-query"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { api } from "lib/api"
-import { fmtDate, useApi } from "lib/hooks"
+import { PATH }                                                                                        from 'route/path'
+import { Pressable, RefreshControl, ScrollView, View }                                                 from "react-native"
+import { useRouter }                                                                                   from "expo-router"
+import { useQueryClient }                                                                              from "@tanstack/react-query"
+import { useSafeAreaInsets }                                                                           from "react-native-safe-area-context"
+import { api }                                                                                         from "lib/api"
+import { fmtDate, useApi }                                                                             from "lib/hook"
 import { Body, Card, EmptyState, ErrorState, Header, Icon, IconButton, IconName, Label, Loading, Row } from "component/ui"
-import { makeStyles, spacing, useTheme } from "design/theme"
+import { makeStyles, spacing, useTheme }                                                               from "design/theme"
 
 const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface } }))
 const KIND: Record<string, { icon: IconName; color: "success" | "error" | "warning" | "info" | "brandPrimary" }> = {
   success: { icon: "check-circle", color: "success" },
-  error: { icon: "close-octagon", color: "error" },
+  error  : { icon: "close-octagon", color: "error" },
   warning: { icon: "alert", color: "warning" },
   request: { icon: "clipboard-text-clock", color: "brandPrimary" },
-  info: { icon: "information", color: "info" },
+  info   : { icon: "information", color: "info" },
 }
 
 export default function Notifications() {
-  const s = useStyles()
+  const s          = useStyles()
   const { colors } = useTheme()
-  const insets = useSafeAreaInsets()
-  const router = useRouter()
-  const qc = useQueryClient()
-  const q = useApi<any[]>("/notifications")
+  const insets     = useSafeAreaInsets()
+  const router     = useRouter()
+  const qc         = useQueryClient()
+  const q          = useApi<any[]>("/notifications")
 
   const readAll = async () => {
     await api("/notifications/read-all", { method: "POST" }).catch(() => {})

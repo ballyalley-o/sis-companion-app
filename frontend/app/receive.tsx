@@ -6,7 +6,7 @@ import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboa
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { api, uid } from "lib/api"
 import { useAuth } from "state/auth"
-import { useApi } from "lib/hooks"
+import { useApi } from "lib/hook"
 import { CommonItems, DidYouMean } from "component/suggest"
 import { Body, Button, Card, ChipRow, Field, Header, Icon, IconButton, Label, Mono, Row, Stepper, useToast } from "component/ui"
 import { makeStyles, radius, spacing, useTheme } from "design/theme"

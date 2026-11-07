@@ -2,7 +2,7 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-COPY scripts ./scripts
+COPY script ./script
 RUN npm ci
 COPY . .
 ARG EXPO_PUBLIC_BACKEND_URL

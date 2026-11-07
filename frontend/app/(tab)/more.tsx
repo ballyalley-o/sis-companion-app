@@ -3,7 +3,7 @@ import { Pressable, ScrollView, View } from "react-native"
 import { useRouter, Href } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useAuth } from "state/auth"
-import { usesNativeTabs } from "config/navigation"
+import { usesNativeTab } from "config/navigation"
 import { Body, Button, H1, H3, Icon, IconName, Label } from "component/ui"
 import { makeStyles, radius, spacing, useTheme } from "design/theme"
 
@@ -39,7 +39,7 @@ export default function More() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const { user, logout } = useAuth()
-  const bottomChrome = usesNativeTabs ? insets.bottom : 0
+  const bottomChrome = usesNativeTab ? insets.bottom : 0
   return (
     <View style={s.root} testID="more-screen">
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + spacing.sm, paddingHorizontal: spacing.lg, gap: spacing.md, paddingBottom: bottomChrome + spacing.xl }}>

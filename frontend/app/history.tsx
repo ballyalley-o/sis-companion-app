@@ -1,20 +1,20 @@
-import { PATH } from 'route/path'
-import { useEffect, useState } from "react"
-import { Pressable, ScrollView, TextInput, View } from "react-native"
-import { useLocalSearchParams, useRouter } from "expo-router"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { useAuth } from "state/auth"
-import { fmtDate, useApi } from "lib/hooks"
-import { DidYouMean } from "component/suggest"
+import { useEffect, useState }                                                                                  from "react"
+import { Pressable, ScrollView, TextInput, View }                                                               from "react-native"
+import { PATH }                                                                                                 from 'route/path'
+import { useLocalSearchParams, useRouter }                                                                      from "expo-router"
+import { useSafeAreaInsets }                                                                                    from "react-native-safe-area-context"
+import { useAuth }                                                                                              from "state/auth"
+import { fmtDate, useApi }                                                                                      from "lib/hook"
+import { DidYouMean }                                                                                           from "component/suggest"
 import { Body, Card, ChipRow, EmptyState, ErrorState, H3, Header, Icon, Label, Loading, Mono, Row, StatusPill } from "component/ui"
-import { fonts, makeStyles, radius, spacing, useTheme } from "design/theme"
+import { fonts, makeStyles, radius, spacing, useTheme }                                                         from "design/theme"
 
 const useStyles = makeStyles((c) => ({
-  root: { flex: 1, backgroundColor: c.surface },
+  root  : { flex: 1, backgroundColor: c.surface },
   search: { flexDirection: "row", alignItems: "center", backgroundColor: c.surfaceTertiary, borderRadius: radius.md, borderWidth: 1.5, borderColor: c.border, paddingHorizontal: spacing.md, height: 56, gap: spacing.sm },
-  input: { flex: 1, color: c.onSurface, fontFamily: fonts.text, fontSize: 17, height: 56 },
-  row: { flexDirection: "row", gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: c.divider },
-  dot: { width: 12, height: 12, borderRadius: 6, marginTop: 6 },
+  input : { flex: 1, color: c.onSurface, fontFamily: fonts.text, fontSize: 17, height: 56 },
+  row   : { flexDirection: "row", gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: c.divider },
+  dot   : { width: 12, height: 12, borderRadius: 6, marginTop: 6 },
 }))
 
 const LABEL: Record<string, string> = {
@@ -22,20 +22,20 @@ const LABEL: Record<string, string> = {
 }
 
 export default function StockHistory() {
-  const s = useStyles()
-  const { colors } = useTheme()
-  const insets = useSafeAreaInsets()
-  const router = useRouter()
-  const { user } = useAuth()
-  const p = useLocalSearchParams<{ product_id?: string }>()
-  const [pid, setPid] = useState(p.product_id || "")
+  const s               = useStyles()
+  const { colors }      = useTheme()
+  const insets          = useSafeAreaInsets()
+  const router          = useRouter()
+  const { user }        = useAuth()
+  const p               = useLocalSearchParams<{ product_id?: string }>()
+  const [pid, setPid]   = useState(p.product_id || "")
   const [text, setText] = useState("")
-  const [q, setQ] = useState("")
-  const [wh, setWh] = useState(user?.role === "manager" ? user.warehouse_id! : "ALL")
+  const [q, setQ]       = useState("")
+  const [wh, setWh]     = useState(user?.role === "manager" ? user.warehouse_id! : "ALL")
   useEffect(() => { const t = setTimeout(() => setQ(text), 300); return () => clearTimeout(t) }, [text])
   const results = useApi<any[]>(!pid && q.trim().length >= 2 ? `/products?q=${encodeURIComponent(q.trim())}` : null)
-  const trace = useApi<any>(pid ? `/products/${pid}/trace${wh !== "ALL" ? `?warehouse_id=${wh}` : ""}` : null)
-  const d = trace.data
+  const trace   = useApi<any>(pid ? `/products/${pid}/trace${wh !== "ALL" ? `?warehouse_id=${wh}` : ""}` : null)
+  const d       = trace.data
 
   const openRef = (ref: any) => {
     if (!ref) return

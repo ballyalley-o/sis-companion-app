@@ -1,5 +1,5 @@
 import { Pressable, ScrollView, View } from "react-native"
-import { useApi } from "lib/hooks"
+import { useApi } from "lib/hook"
 import { Body, Chip, Icon, Label, Row } from "component/ui"
 import { makeStyles, radius, spacing, useTheme } from "design/theme"
 

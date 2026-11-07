@@ -4,8 +4,8 @@ import { FlatList, RefreshControl, View } from "react-native"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useAuth } from "state/auth"
-import { fmtDate, useApi } from "lib/hooks"
-import { usesNativeTabs } from "config/navigation"
+import { fmtDate, useApi } from "lib/hook"
+import { usesNativeTab } from "config/navigation"
 import { Body, Card, ChipRow, EmptyState, ErrorState, H1, IconButton, Label, Loading, Mono, Row, StatusPill } from "component/ui"
 import { makeStyles, spacing, useTheme } from "design/theme"
 
@@ -26,7 +26,7 @@ export default function Equipment() {
   const [f, setF] = useState<F>(params.filter || "all")
   useEffect(() => { if (params.filter) setF(params.filter) }, [params.filter])
   const res = useApi<any[]>(`/equipment${f !== "all" ? `?status=${f}` : ""}`)
-  const bottomChrome = usesNativeTabs ? insets.bottom : 0
+  const bottomChrome = usesNativeTab ? insets.bottom : 0
 
   return (
     <View style={s.root} testID="equipment-screen">

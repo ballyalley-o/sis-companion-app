@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { api } from "lib/api"
 import { useAuth } from "state/auth"
-import { fmtDate, useApi } from "lib/hooks"
+import { fmtDate, useApi } from "lib/hook"
 import { Body, Button, Card, Chip, ChipRow, EmptyState, ErrorState, Field, H3, Header, IconButton, Label, Loading, Mono, Row, Sheet, StatusPill, useToast } from "component/ui"
 import { makeStyles, spacing, useTheme } from "design/theme"
 

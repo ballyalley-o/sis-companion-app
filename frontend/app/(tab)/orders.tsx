@@ -3,7 +3,7 @@ import { Platform, Pressable, ScrollView, TextInput, View, useWindowDimensions }
 import { useQueryClient } from "@tanstack/react-query"
 import { api, uid } from "lib/api"
 import { useAuth } from "state/auth"
-import { useApi } from "lib/hooks"
+import { useApi } from "lib/hook"
 import { Body, Button, Card, ChipRow, EmptyState, ErrorState, Field, H1, H2, H3, Icon, Label, Loading, Mono, Row, StatusPill, useToast } from "component/ui"
 import { fonts, makeStyles, radius, spacing, useTheme } from "design/theme"
 

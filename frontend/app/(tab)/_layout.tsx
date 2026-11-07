@@ -4,7 +4,7 @@ import { Redirect, Tabs, useRouter } from "expo-router"
 import { NativeTabs } from "expo-router/unstable-native-tabs"
 import { Platform, Pressable, useWindowDimensions, View } from "react-native"
 import { useAuth } from "state/auth"
-import { usesNativeTabs } from "config/navigation"
+import { usesNativeTab } from "config/navigation"
 import { Body, Icon, Label, Loading } from "component/ui"
 import { fonts, makeStyles, spacing, useTheme } from "design/theme"
 
@@ -24,7 +24,7 @@ function DesktopSidebar({ state, descriptors, navigation, user }: any) {
   return (
     <View style={s.root}>
       <View style={s.brand}>
-        <Image source={require("../../assets/images/adaptive-icon.png")} accessibilityLabel="SIS logo" style={{ width: 48, height: 48 }} contentFit="contain" />
+        <Image source={require("../../asset/image/adaptive-icon.png")} accessibilityLabel="SIS logo" style={{ width: 48, height: 48 }} contentFit="contain" />
         <View style={{ flex: 1, gap: 2 }}>
           <Body style={{ fontFamily: fonts.display, fontSize: 23, color: colors.onSurface }}>SIS Companion</Body>
         </View>
@@ -60,7 +60,7 @@ export default function TabsLayout() {
   if (!ready) return <View style={{ flex: 1, backgroundColor: colors.surface }}><Loading /></View>
   if (!user) return <Redirect href={PATH.LOGIN} />
 
-  if (usesNativeTabs) {
+  if (usesNativeTab) {
     return (
       <NativeTabs tintColor={colors.brandPrimary}>
         <NativeTabs.Trigger name="index">

@@ -2,7 +2,7 @@ import { PATH } from 'route/path'
 import { ScrollView, View } from "react-native"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { fmtDate, useApi } from "lib/hooks"
+import { fmtDate, useApi } from "lib/hook"
 import { Body, Button, Card, ErrorState, H3, Header, Label, Loading, Mono, Row, StatusPill } from "component/ui"
 import { makeStyles, spacing, useTheme } from "design/theme"
 
