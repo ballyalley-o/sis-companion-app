@@ -1,69 +1,70 @@
-import { useState } from "react";
-import { FlatList, RefreshControl, View } from "react-native";
-import { useRouter } from "expo-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api } from "@/src/api";
-import { printLabels } from "@/src/label";
-import { useAuth } from "@/src/auth";
-import { useApi } from "@/src/hooks";
-import { Body, Button, Card, ChipRow, EmptyState, ErrorState, Field, H3, Header, IconButton, Label, Loading, Mono, Row, Sheet, useToast } from "@/src/ui";
-import { makeStyles, spacing, useTheme } from "@/src/theme";
+import { PATH } from 'route/path'
+import { useState } from "react"
+import { FlatList, RefreshControl, View } from "react-native"
+import { useRouter } from "expo-router"
+import { useQueryClient } from "@tanstack/react-query"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { api } from "lib/api"
+import { printLabels } from "lib/tool/label"
+import { useAuth } from "state/auth"
+import { useApi } from "lib/hooks"
+import { Body, Button, Card, ChipRow, EmptyState, ErrorState, Field, H3, Header, IconButton, Label, Loading, Mono, Row, Sheet, useToast } from "component/ui"
+import { makeStyles, spacing, useTheme } from "design/theme"
 
-const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface }, chips: { borderBottomWidth: 1, borderBottomColor: c.divider } }));
+const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface }, chips: { borderBottomWidth: 1, borderBottomColor: c.divider } }))
 
 export default function Bins() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const toast = useToast();
-  const qc = useQueryClient();
-  const { user } = useAuth();
-  const [wh, setWh] = useState(user?.warehouse_id || "QLD");
-  const q = useApi<any[]>(`/bins?warehouse_id=${wh}`);
-  const [open, setOpen] = useState(false);
-  const [code, setCode] = useState("");
-  const [zone, setZone] = useState("");
-  const [desc, setDesc] = useState("");
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [printing, setPrinting] = useState(false);
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const toast = useToast()
+  const qc = useQueryClient()
+  const { user } = useAuth()
+  const [wh, setWh] = useState(user?.warehouse_id || "QLD")
+  const q = useApi<any[]>(`/bins?warehouse_id=${wh}`)
+  const [open, setOpen] = useState(false)
+  const [code, setCode] = useState("")
+  const [zone, setZone] = useState("")
+  const [desc, setDesc] = useState("")
+  const [name, setName] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [printing, setPrinting] = useState(false)
 
   const print = async (ids?: string) => {
-    setPrinting(true);
+    setPrinting(true)
     try {
-      const labels = await api<any[]>(`/bins-labels?warehouse_id=${wh}${ids ? `&ids=${ids}` : ""}`);
-      await printLabels(labels);
+      const labels = await api<any[]>(`/bins-labels?warehouse_id=${wh}${ids ? `&ids=${ids}` : ""}`)
+      await printLabels(labels)
     } catch (e: any) {
-      toast(e.message || "Print failed", "error");
+      toast(e.message || "Print failed", "error")
     } finally {
-      setPrinting(false);
+      setPrinting(false)
     }
-  };
+  }
   const create = async () => {
-    if (!code.trim()) return toast("Enter a bin code", "error");
-    setBusy(true);
+    if (!code.trim()) return toast("Enter a bin code", "error")
+    setBusy(true)
     try {
-      await api("/bins", { method: "POST", body: { code, warehouse_id: wh, zone, description: desc, name } });
-      toast(`Bin ${code.toUpperCase()} created`);
-      setOpen(false); setCode(""); setZone(""); setDesc(""); setName("");
-      qc.invalidateQueries();
+      await api("/bins", { method: "POST", body: { code, warehouse_id: wh, zone, description: desc, name } })
+      toast(`Bin ${code.toUpperCase()} created`)
+      setOpen(false); setCode(""); setZone(""); setDesc(""); setName("")
+      qc.invalidateQueries()
     } catch (e: any) {
-      toast(e.message, "error");
+      toast(e.message, "error")
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
-  };
+  }
   const archive = async (b: any) => {
     try {
-      await api(`/bins/${b.id}`, { method: "DELETE" });
-      toast(`Bin ${b.code} archived`, "info");
-      qc.invalidateQueries();
+      await api(`/bins/${b.id}`, { method: "DELETE" })
+      toast(`Bin ${b.code} archived`, "info")
+      qc.invalidateQueries()
     } catch (e: any) {
-      toast(e.message, "error");
+      toast(e.message, "error")
     }
-  };
+  }
 
   return (
     <View style={s.root} testID="bins-screen">
@@ -80,7 +81,7 @@ export default function Bins() {
           ListHeaderComponent={<Button testID="bins-print-all" title={`Print all ${wh} labels (100×30mm)`} icon="printer" loading={printing} onPress={() => print()} />}
           ListEmptyComponent={<EmptyState icon="grid-off" title="No bins" />}
           renderItem={({ item: b }) => (
-            <Card testID={`bin-card-${b.code}`} onPress={() => router.push({ pathname: "/bin/[id]", params: { id: b.id } })}>
+            <Card testID={`bin-card-${b.code}`} onPress={() => router.push({ pathname: PATH.BIN_DETAIL, params: { id: b.id } })}>
               <Row>
                 <View style={{ flex: 1, gap: 2 }}>
                   <Mono>{b.code}</Mono>
@@ -102,5 +103,5 @@ export default function Bins() {
         <Button testID="bin-create-button" title="Create bin" icon="plus" loading={busy} onPress={create} />
       </Sheet>
     </View>
-  );
+  )
 }

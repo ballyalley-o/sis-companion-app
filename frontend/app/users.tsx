@@ -1,42 +1,42 @@
-import { useState } from "react";
-import { FlatList, View } from "react-native";
-import { useQueryClient } from "@tanstack/react-query";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api } from "@/src/api";
-import { useApi } from "@/src/hooks";
-import { Body, Button, Card, Chip, ErrorState, Field, H3, Header, IconButton, Label, Loading, Row, Sheet, StatusPill, useToast } from "@/src/ui";
-import { makeStyles, spacing, useTheme } from "@/src/theme";
+import { useState } from "react"
+import { FlatList, View } from "react-native"
+import { useQueryClient } from "@tanstack/react-query"
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { api } from "lib/api"
+import { useApi } from "lib/hooks"
+import { Body, Button, Card, Chip, ErrorState, Field, H3, Header, IconButton, Label, Loading, Row, Sheet, StatusPill, useToast } from "component/ui"
+import { makeStyles, spacing, useTheme } from "design/theme"
 
-const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface } }));
+const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface } }))
 
 export default function Users() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const toast = useToast();
-  const qc = useQueryClient();
-  const q = useApi<any[]>("/users");
-  const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ name: "", email: "", password: "", role: "driller", warehouse_id: "QLD" });
-  const [busy, setBusy] = useState(false);
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const toast = useToast()
+  const qc = useQueryClient()
+  const q = useApi<any[]>("/users")
+  const [open, setOpen] = useState(false)
+  const [f, setF] = useState({ name: "", email: "", password: "", role: "driller", warehouse_id: "QLD" })
+  const [busy, setBusy] = useState(false)
 
   const create = async () => {
-    setBusy(true);
+    setBusy(true)
     try {
-      await api("/users", { method: "POST", body: { ...f, warehouse_id: f.role === "admin" ? null : f.warehouse_id } });
-      toast(`${f.name} added`);
-      setOpen(false);
-      setF({ name: "", email: "", password: "", role: "driller", warehouse_id: "QLD" });
-      qc.invalidateQueries();
-    } catch (e: any) { toast(e.message, "error"); } finally { setBusy(false); }
-  };
+      await api("/users", { method: "POST", body: { ...f, warehouse_id: f.role === "admin" ? null : f.warehouse_id } })
+      toast(`${f.name} added`)
+      setOpen(false)
+      setF({ name: "", email: "", password: "", role: "driller", warehouse_id: "QLD" })
+      qc.invalidateQueries()
+    } catch (e: any) { toast(e.message, "error") } finally { setBusy(false) }
+  }
   const toggle = async (u: any) => {
     try {
-      await api(`/users/${u.id}/toggle`, { method: "PATCH" });
-      qc.invalidateQueries();
-    } catch (e: any) { toast(e.message, "error"); }
-  };
+      await api(`/users/${u.id}/toggle`, { method: "PATCH" })
+      qc.invalidateQueries()
+    } catch (e: any) { toast(e.message, "error") }
+  }
 
   return (
     <View style={s.root} testID="users-screen">
@@ -82,5 +82,5 @@ export default function Users() {
         </KeyboardAwareScrollView>
       </Sheet>
     </View>
-  );
+  )
 }

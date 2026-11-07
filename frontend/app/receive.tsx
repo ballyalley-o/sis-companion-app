@@ -1,91 +1,91 @@
-import { useEffect, useRef, useState } from "react";
-import { Pressable, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api, uid } from "@/src/api";
-import { useAuth } from "@/src/auth";
-import { useApi } from "@/src/hooks";
-import { CommonItems, DidYouMean } from "@/src/suggest";
-import { Body, Button, Card, ChipRow, Field, Header, Icon, IconButton, Label, Mono, Row, Stepper, useToast } from "@/src/ui";
-import { makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { useEffect, useRef, useState } from "react"
+import { Pressable, View } from "react-native"
+import { useLocalSearchParams, useRouter } from "expo-router"
+import { useQueryClient } from "@tanstack/react-query"
+import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { api, uid } from "lib/api"
+import { useAuth } from "state/auth"
+import { useApi } from "lib/hooks"
+import { CommonItems, DidYouMean } from "component/suggest"
+import { Body, Button, Card, ChipRow, Field, Header, Icon, IconButton, Label, Mono, Row, Stepper, useToast } from "component/ui"
+import { makeStyles, radius, spacing, useTheme } from "design/theme"
 
-type Line = { product_id: string; sku: string; name: string; unit: string; bin_id: string; qty: number };
+type Line = { product_id: string; sku: string; name: string; unit: string; bin_id: string; qty: number }
 
 const useStyles = makeStyles((c) => ({
   root: { flex: 1, backgroundColor: c.surface },
   footer: { backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.divider, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   result: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 56, paddingHorizontal: spacing.md, borderRadius: radius.sm, backgroundColor: c.surfaceTertiary, gap: spacing.md },
-}));
+}))
 
 export default function Receive() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const toast = useToast();
-  const qc = useQueryClient();
-  const { user } = useAuth();
-  const p = useLocalSearchParams<{ wh?: string; bin_id?: string; reorder_id?: string }>();
-  const [wh, setWh] = useState<string>(user?.role === "manager" ? user.warehouse_id! : p.wh || "QLD");
-  const [supplier, setSupplier] = useState("");
-  const [reference, setReference] = useState("");
-  const [notes, setNotes] = useState("");
-  const [lines, setLines] = useState<Line[]>([]);
-  const [search, setSearch] = useState("");
-  const [busy, setBusy] = useState(false);
-  const clientRef = useRef(uid());
-  const bins = useApi<any[]>(`/bins?warehouse_id=${wh}`);
-  const results = useApi<any[]>(search.trim().length >= 2 ? `/products?warehouse_id=${wh}&q=${encodeURIComponent(search.trim())}` : null);
-  const binOpts = (bins.data || []).map((b) => ({ label: b.code, value: b.id }));
-  const reorder = useApi<any>(p.reorder_id ? `/reorders/${p.reorder_id}` : null);
-  const [prefilled, setPrefilled] = useState(false);
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const toast = useToast()
+  const qc = useQueryClient()
+  const { user } = useAuth()
+  const p = useLocalSearchParams<{ wh?: string; bin_id?: string; reorder_id?: string }>()
+  const [wh, setWh] = useState<string>(user?.role === "manager" ? user.warehouse_id! : p.wh || "QLD")
+  const [supplier, setSupplier] = useState("")
+  const [reference, setReference] = useState("")
+  const [notes, setNotes] = useState("")
+  const [lines, setLines] = useState<Line[]>([])
+  const [search, setSearch] = useState("")
+  const [busy, setBusy] = useState(false)
+  const clientRef = useRef(uid())
+  const bins = useApi<any[]>(`/bins?warehouse_id=${wh}`)
+  const results = useApi<any[]>(search.trim().length >= 2 ? `/products?warehouse_id=${wh}&q=${encodeURIComponent(search.trim())}` : null)
+  const binOpts = (bins.data || []).map((b) => ({ label: b.code, value: b.id }))
+  const reorder = useApi<any>(p.reorder_id ? `/reorders/${p.reorder_id}` : null)
+  const [prefilled, setPrefilled] = useState(false)
   useEffect(() => {
-    if (!reorder.data || !bins.data || prefilled) return;
+    if (!reorder.data || !bins.data || prefilled) return
     const r = reorder.data;
     (async () => {
-      const out: Line[] = [];
+      const out: Line[] = []
       for (const i of r.items) {
-        const left = i.qty - (i.received || 0);
-        if (left <= 0) continue;
-        const prod = await api(`/products/${i.product_id}`).catch(() => null);
-        const home = prod?.locations?.find((l: any) => l.warehouse_id === r.warehouse_id);
-        const bin_id = home?.bin_id || bins.data?.[0]?.id;
-        if (bin_id) out.push({ product_id: i.product_id, sku: i.sku, name: i.name, unit: i.unit, bin_id, qty: left });
+        const left = i.qty - (i.received || 0)
+        if (left <= 0) continue
+        const prod = await api(`/products/${i.product_id}`).catch(() => null)
+        const home = prod?.locations?.find((l: any) => l.warehouse_id === r.warehouse_id)
+        const bin_id = home?.bin_id || bins.data?.[0]?.id
+        if (bin_id) out.push({ product_id: i.product_id, sku: i.sku, name: i.name, unit: i.unit, bin_id, qty: left })
       }
-      setLines(out);
-      setSupplier(r.supplier || "");
-      setReference(r.number);
-      setPrefilled(true);
-    })();
-  }, [reorder.data, bins.data, prefilled]);
+      setLines(out)
+      setSupplier(r.supplier || "")
+      setReference(r.number)
+      setPrefilled(true)
+    })()
+  }, [reorder.data, bins.data, prefilled])
 
   const add = (prod: any) => {
-    if (lines.some((l) => l.product_id === prod.id)) return toast(`${prod.sku} already added`, "info");
-    const home = prod.locations?.find((l: any) => l.warehouse_id === wh);
-    const bin_id = p.bin_id || home?.bin_id || bins.data?.[0]?.id;
-    if (!bin_id) return toast("Create a bin in this warehouse first", "error");
-    setLines([...lines, { product_id: prod.id, sku: prod.sku, name: prod.name, unit: prod.unit, bin_id, qty: 1 }]);
-    setSearch("");
-  };
+    if (lines.some((l) => l.product_id === prod.id)) return toast(`${prod.sku} already added`, "info")
+    const home = prod.locations?.find((l: any) => l.warehouse_id === wh)
+    const bin_id = p.bin_id || home?.bin_id || bins.data?.[0]?.id
+    if (!bin_id) return toast("Create a bin in this warehouse first", "error")
+    setLines([...lines, { product_id: prod.id, sku: prod.sku, name: prod.name, unit: prod.unit, bin_id, qty: 1 }])
+    setSearch("")
+  }
 
   const submit = async () => {
-    if (!lines.length) return toast("Add at least one item", "error");
-    setBusy(true);
+    if (!lines.length) return toast("Add at least one item", "error")
+    setBusy(true)
     try {
       const r = await api("/receipts", { method: "POST", body: {
         warehouse_id: wh, supplier, reference, notes, client_ref: clientRef.current, reorder_id: p.reorder_id || null,
-        items: lines.map((l) => ({ product_id: l.product_id, bin_id: l.bin_id, qty: l.qty })) } });
-      qc.invalidateQueries();
-      toast(`${r.number} received · Zoho ${r.zoho_txn_id}`);
-      router.back();
+        items: lines.map((l) => ({ product_id: l.product_id, bin_id: l.bin_id, qty: l.qty })) } })
+      qc.invalidateQueries()
+      toast(`${r.number} received · Zoho ${r.zoho_txn_id}`)
+      router.back()
     } catch (e: any) {
-      toast(e.message, "error");
+      toast(e.message, "error")
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
-  };
+  }
 
   return (
     <View style={s.root} testID="receive-screen">
@@ -95,7 +95,7 @@ export default function Receive() {
           <View style={{ gap: spacing.sm }}>
             <Label>Warehouse</Label>
             <View style={{ marginHorizontal: -spacing.lg }}>
-              <ChipRow testIDPrefix="receive-wh" value={wh} onChange={(v) => { setWh(v); setLines([]); }} options={[{ label: "Queensland", value: "QLD" }, { label: "New South Wales", value: "NSW" }]} />
+              <ChipRow testIDPrefix="receive-wh" value={wh} onChange={(v) => { setWh(v); setLines([]) }} options={[{ label: "Queensland", value: "QLD" }, { label: "New South Wales", value: "NSW" }]} />
             </View>
           </View>
         )}
@@ -142,5 +142,5 @@ export default function Receive() {
         </View>
       </KeyboardStickyView>
     </View>
-  );
+  )
 }

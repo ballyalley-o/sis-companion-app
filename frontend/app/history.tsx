@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
-import { Pressable, ScrollView, TextInput, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAuth } from "@/src/auth";
-import { fmtDate, useApi } from "@/src/hooks";
-import { DidYouMean } from "@/src/suggest";
-import { Body, Card, ChipRow, EmptyState, ErrorState, H3, Header, Icon, Label, Loading, Mono, Row, StatusPill } from "@/src/ui";
-import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { PATH } from 'route/path'
+import { useEffect, useState } from "react"
+import { Pressable, ScrollView, TextInput, View } from "react-native"
+import { useLocalSearchParams, useRouter } from "expo-router"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useAuth } from "state/auth"
+import { fmtDate, useApi } from "lib/hooks"
+import { DidYouMean } from "component/suggest"
+import { Body, Card, ChipRow, EmptyState, ErrorState, H3, Header, Icon, Label, Loading, Mono, Row, StatusPill } from "component/ui"
+import { fonts, makeStyles, radius, spacing, useTheme } from "design/theme"
 
 const useStyles = makeStyles((c) => ({
   root: { flex: 1, backgroundColor: c.surface },
@@ -14,33 +15,33 @@ const useStyles = makeStyles((c) => ({
   input: { flex: 1, color: c.onSurface, fontFamily: fonts.text, fontSize: 17, height: 56 },
   row: { flexDirection: "row", gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: c.divider },
   dot: { width: 12, height: 12, borderRadius: 6, marginTop: 6 },
-}));
+}))
 
 const LABEL: Record<string, string> = {
   request_take: "Taken by driller", request_return: "Returned", receive: "Received", count_adjust: "Count adjustment", zoho_sync: "Zoho import sync",
-};
+}
 
 export default function StockHistory() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const { user } = useAuth();
-  const p = useLocalSearchParams<{ product_id?: string }>();
-  const [pid, setPid] = useState(p.product_id || "");
-  const [text, setText] = useState("");
-  const [q, setQ] = useState("");
-  const [wh, setWh] = useState(user?.role === "manager" ? user.warehouse_id! : "ALL");
-  useEffect(() => { const t = setTimeout(() => setQ(text), 300); return () => clearTimeout(t); }, [text]);
-  const results = useApi<any[]>(!pid && q.trim().length >= 2 ? `/products?q=${encodeURIComponent(q.trim())}` : null);
-  const trace = useApi<any>(pid ? `/products/${pid}/trace${wh !== "ALL" ? `?warehouse_id=${wh}` : ""}` : null);
-  const d = trace.data;
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const { user } = useAuth()
+  const p = useLocalSearchParams<{ product_id?: string }>()
+  const [pid, setPid] = useState(p.product_id || "")
+  const [text, setText] = useState("")
+  const [q, setQ] = useState("")
+  const [wh, setWh] = useState(user?.role === "manager" ? user.warehouse_id! : "ALL")
+  useEffect(() => { const t = setTimeout(() => setQ(text), 300); return () => clearTimeout(t) }, [text])
+  const results = useApi<any[]>(!pid && q.trim().length >= 2 ? `/products?q=${encodeURIComponent(q.trim())}` : null)
+  const trace = useApi<any>(pid ? `/products/${pid}/trace${wh !== "ALL" ? `?warehouse_id=${wh}` : ""}` : null)
+  const d = trace.data
 
   const openRef = (ref: any) => {
-    if (!ref) return;
-    if (ref.type === "request") router.push({ pathname: "/request/[id]", params: { id: ref.id } });
-    else if (ref.type === "count") router.push({ pathname: "/counts/[id]", params: { id: ref.id } });
-  };
+    if (!ref) return
+    if (ref.type === "request") router.push({ pathname: PATH.REQUEST_DETAIL, params: { id: ref.id } })
+    else if (ref.type === "count") router.push({ pathname: PATH.COUNT_DETAIL, params: { id: ref.id } })
+  }
 
   return (
     <View style={s.root} testID="history-screen">
@@ -66,7 +67,7 @@ export default function StockHistory() {
             <Card style={{ gap: spacing.sm }}>
               <Row style={{ justifyContent: "space-between" }}>
                 <Mono>{d.product.sku}</Mono>
-                <Pressable testID="history-change-item" onPress={() => { setPid(""); setText(""); }} hitSlop={10}><Label style={{ color: colors.brandPrimary }}>Change item</Label></Pressable>
+                <Pressable testID="history-change-item" onPress={() => { setPid(""); setText("") }} hitSlop={10}><Label style={{ color: colors.brandPrimary }}>Change item</Label></Pressable>
               </Row>
               <H3>{d.product.name}</H3>
               <Row>
@@ -85,7 +86,7 @@ export default function StockHistory() {
               <Card style={{ gap: spacing.sm }} testID="history-upcoming">
                 <Label>Upcoming</Label>
                 {d.reservations.map((r: any) => (
-                  <Pressable key={r.trip_id} testID={`history-trip-${r.number}`} onPress={() => router.push({ pathname: "/trips/[id]", params: { id: r.trip_id } })}>
+                  <Pressable key={r.trip_id} testID={`history-trip-${r.number}`} onPress={() => router.push({ pathname: PATH.TRIP_DETAIL, params: { id: r.trip_id } })}>
                     <Row style={{ justifyContent: "space-between" }}>
                       <Body style={{ flex: 1, color: colors.onSurface }}>Trip {r.number} · {r.start_date} · {r.driller_name} {r.rig_number}</Body>
                       <StatusPill status={r.status} label={`−${r.qty}`} />
@@ -120,5 +121,5 @@ export default function StockHistory() {
         )}
       </ScrollView>
     </View>
-  );
+  )
 }

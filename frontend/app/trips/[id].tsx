@@ -1,52 +1,53 @@
-import { useState } from "react";
-import { ScrollView, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api } from "@/src/api";
-import { isStaff, useAuth } from "@/src/auth";
-import { fmtDate, useApi } from "@/src/hooks";
-import { GoogleMapsAddress } from "@/src/GoogleMapsAddress";
-import { Body, Button, Card, ErrorState, Field, H3, Header, IconButton, Label, Loading, Mono, Row, Sheet, StatusPill, useToast } from "@/src/ui";
-import { makeStyles, spacing, useTheme } from "@/src/theme";
+import { PATH } from 'route/path'
+import { useState } from "react"
+import { ScrollView, View } from "react-native"
+import { useLocalSearchParams, useRouter } from "expo-router"
+import { useQueryClient } from "@tanstack/react-query"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { api } from "lib/api"
+import { isStaff, useAuth } from "state/auth"
+import { fmtDate, useApi } from "lib/hooks"
+import { GoogleMapsAddress } from "component/google-maps-address"
+import { Body, Button, Card, ErrorState, Field, H3, Header, IconButton, Label, Loading, Mono, Row, Sheet, StatusPill, useToast } from "component/ui"
+import { makeStyles, spacing, useTheme } from "design/theme"
 
-const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface } }));
+const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface } }))
 
 export default function TripDetail() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const toast = useToast();
-  const qc = useQueryClient();
-  const { user } = useAuth();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const q = useApi<any>(`/trips/${id}`);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [rejecting, setRejecting] = useState(false);
-  const [note, setNote] = useState("");
-  const t = q.data;
-  const staff = isStaff(user);
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const toast = useToast()
+  const qc = useQueryClient()
+  const { user } = useAuth()
+  const { id } = useLocalSearchParams<{ id: string }>()
+  const q = useApi<any>(`/trips/${id}`)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [rejecting, setRejecting] = useState(false)
+  const [note, setNote] = useState("")
+  const t = q.data
+  const staff = isStaff(user)
 
   const act = async (path: string, body: any, msg: string) => {
-    setBusy(path);
+    setBusy(path)
     try {
-      const r = await api(`/trips/${id}/${path}`, { method: "POST", body });
-      toast(typeof msg === "string" ? msg : "Done");
-      qc.invalidateQueries();
-      return r;
+      const r = await api(`/trips/${id}/${path}`, { method: "POST", body })
+      toast(typeof msg === "string" ? msg : "Done")
+      qc.invalidateQueries()
+      return r
     } catch (e: any) {
-      toast(e.message, "error");
+      toast(e.message, "error")
     } finally {
-      setBusy(null);
+      setBusy(null)
     }
-  };
+  }
 
   return (
     <View style={s.root} testID="trip-detail-screen">
       <Header title={t?.number || "Trip"} subtitle={t ? `${t.start_date} → ${t.end_date} · ${t.warehouse_id}` : undefined}
         right={t && ["pending", "rejected"].includes(t.status) && (staff || t.driller_id === user?.id)
-          ? <IconButton testID="trip-edit-button" icon="pencil" onPress={() => router.push({ pathname: "/trips/new", params: { id: t.id } })} /> : undefined} />
+          ? <IconButton testID="trip-edit-button" icon="pencil" onPress={() => router.push({ pathname: PATH.TRIP_NEW, params: { id: t.id } })} /> : undefined} />
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : t && (
         <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: insets.bottom + spacing.xl }}>
           <Card style={{ gap: spacing.sm }}>
@@ -86,7 +87,7 @@ export default function TripDetail() {
                   <StatusPill status={r.status === "open" ? "pending" : r.status === "ordered" ? "processing" : r.status === "received" ? "approved" : "cancelled"} label={r.status} />
                 </Row>
               ))}
-              {staff && <Button testID="trip-open-reorders" title="Manage reorders" variant="ghost" icon="cart-arrow-right" onPress={() => router.push("/reorders")} />}
+              {staff && <Button testID="trip-open-reorders" title="Manage reorders" variant="ghost" icon="cart-arrow-right" onPress={() => router.push(PATH.REORDER)} />}
             </Card>
           )}
 
@@ -104,10 +105,10 @@ export default function TripDetail() {
           )}
           {staff && ["approved", "prepared"].includes(t.status) && (
             <Button testID="trip-issue-button" large title="Issue stock to driller" icon="truck-delivery" variant="success" loading={busy === "issue"}
-              onPress={async () => { const r = await act("issue", undefined, "Stock issued & posted to Zoho"); if (r?.request) router.push({ pathname: "/request/[id]", params: { id: r.request.id } }); }} />
+              onPress={async () => { const r = await act("issue", undefined, "Stock issued & posted to Zoho"); if (r?.request) router.push({ pathname: PATH.REQUEST_DETAIL, params: { id: r.request.id } }) }} />
           )}
           {t.issued_request_id && (
-            <Button testID="trip-view-issue" title="View issue transaction" variant="ghost" icon="receipt" onPress={() => router.push({ pathname: "/request/[id]", params: { id: t.issued_request_id } })} />
+            <Button testID="trip-view-issue" title="View issue transaction" variant="ghost" icon="receipt" onPress={() => router.push({ pathname: PATH.REQUEST_DETAIL, params: { id: t.issued_request_id } })} />
           )}
           {["pending", "approved", "prepared", "rejected"].includes(t.status) && (staff || t.status === "pending") && (
             <Button testID="trip-cancel-button" title="Cancel trip" variant="secondary" icon="cancel" onPress={() => act("cancel", undefined, "Trip cancelled")} />
@@ -131,8 +132,8 @@ export default function TripDetail() {
         <H3>Reject trip</H3>
         <Field testID="trip-reject-reason" label="Reason (sent to driller)" value={note} onChangeText={setNote} multiline />
         <Button testID="trip-reject-confirm" title="Confirm reject" variant="danger" loading={busy === "reject"}
-          onPress={async () => { await act("reject", { note }, "Trip rejected"); setRejecting(false); setNote(""); }} />
+          onPress={async () => { await act("reject", { note }, "Trip rejected"); setRejecting(false); setNote("") }} />
       </Sheet>
     </View>
-  );
+  )
 }

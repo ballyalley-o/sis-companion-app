@@ -1,25 +1,25 @@
-import { useState } from "react";
-import { FlatList, RefreshControl, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { isStaff, useAuth } from "@/src/auth";
-import { fmtDate, useApi } from "@/src/hooks";
-import { Body, Card, ChipRow, EmptyState, ErrorState, Header, Label, Loading, Mono, Row, StatusPill } from "@/src/ui";
-import { makeStyles, spacing, useTheme } from "@/src/theme";
+import { useState } from "react"
+import { FlatList, RefreshControl, View } from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { isStaff, useAuth } from "state/auth"
+import { fmtDate, useApi } from "lib/hooks"
+import { Body, Card, ChipRow, EmptyState, ErrorState, Header, Label, Loading, Mono, Row, StatusPill } from "component/ui"
+import { makeStyles, spacing, useTheme } from "design/theme"
 
-type Tab = "low" | "disc" | "moves" | "audit" | "receipts";
-const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface }, chips: { borderBottomWidth: 1, borderBottomColor: c.divider } }));
-const PATH: Record<Tab, string> = { low: "/reports/low-stock", disc: "/reports/discrepancies", moves: "/movements", audit: "/audit", receipts: "/receipts" };
+type Tab = "low" | "disc" | "moves" | "audit" | "receipts"
+const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface }, chips: { borderBottomWidth: 1, borderBottomColor: c.divider } }))
+const PATH: Record<Tab, string> = { low: "/reports/low-stock", disc: "/reports/discrepancies", moves: "/movements", audit: "/audit", receipts: "/receipts" }
 
 export default function Reports() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const { user } = useAuth();
-  const staff = isStaff(user);
-  const [tab, setTab] = useState<Tab>("low");
-  const q = useApi<any[]>(PATH[tab]);
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const { user } = useAuth()
+  const staff = isStaff(user)
+  const [tab, setTab] = useState<Tab>("low")
+  const q = useApi<any[]>(PATH[tab])
   const opts = [{ label: "Low stock", value: "low" as Tab }, { label: "Movements", value: "moves" as Tab },
-    ...(staff ? [{ label: "Receipts", value: "receipts" as Tab }, { label: "Discrepancies", value: "disc" as Tab }, { label: "Audit trail", value: "audit" as Tab }] : [])];
+    ...(staff ? [{ label: "Receipts", value: "receipts" as Tab }, { label: "Discrepancies", value: "disc" as Tab }, { label: "Audit trail", value: "audit" as Tab }] : [])]
 
   const render = ({ item: x }: { item: any }) => {
     if (tab === "receipts") return (
@@ -29,7 +29,7 @@ export default function Reports() {
         <Body style={{ fontSize: 13 }}>{x.items.map((i: any) => `${i.sku}×${i.qty} → ${i.bin_code}`).join(", ")}</Body>
         <Label>{x.warehouse_id} · {fmtDate(x.created_at)} · {x.received_by} · {x.zoho_txn_id}</Label>
       </Card>
-    );
+    )
     if (tab === "low") return (
       <Card testID={`report-low-${x.sku}-${x.warehouse_id}`}>
         <Row>
@@ -40,7 +40,7 @@ export default function Reports() {
           </View>
         </Row>
       </Card>
-    );
+    )
     if (tab === "disc") return (
       <Card testID={`report-disc-${x.id}`}>
         <Row>
@@ -51,7 +51,7 @@ export default function Reports() {
           </View>
         </Row>
       </Card>
-    );
+    )
     if (tab === "moves") return (
       <Card>
         <Row>
@@ -59,15 +59,15 @@ export default function Reports() {
           <StatusPill status={x.delta < 0 ? "take" : "return"} label={x.delta > 0 ? `+${x.delta}` : String(x.delta)} />
         </Row>
       </Card>
-    );
+    )
     return (
       <Card>
         <Body style={{ color: colors.onSurface, fontWeight: "700" }}>{x.action}</Body>
         <Body>{x.user_name} ({x.role}) · {x.entity}</Body>
         <Label>{fmtDate(x.at)}</Label>
       </Card>
-    );
-  };
+    )
+  }
 
   return (
     <View style={s.root} testID="reports-screen">
@@ -80,5 +80,5 @@ export default function Reports() {
           ListEmptyComponent={<EmptyState title="Nothing to report" />} />
       )}
     </View>
-  );
+  )
 }

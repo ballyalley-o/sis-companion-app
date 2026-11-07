@@ -1,17 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api, uid } from "@/src/api";
-import { useAuth } from "@/src/auth";
-import { useApi } from "@/src/hooks";
-import { CommonItems, DidYouMean } from "@/src/suggest";
-import { Body, Button, Card, ChipRow, Field, Header, Icon, IconButton, Label, Mono, Row, Stepper, useToast } from "@/src/ui";
-import { makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { PATH } from 'route/path'
+import { useEffect, useMemo, useRef, useState } from "react"
+import { Pressable, View } from "react-native"
+import { useLocalSearchParams, useRouter } from "expo-router"
+import { useQueryClient } from "@tanstack/react-query"
+import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { api, uid } from "lib/api"
+import { useAuth } from "state/auth"
+import { useApi } from "lib/hooks"
+import { CommonItems, DidYouMean } from "component/suggest"
+import { Body, Button, Card, ChipRow, Field, Header, Icon, IconButton, Label, Mono, Row, Stepper, useToast } from "component/ui"
+import { makeStyles, radius, spacing, useTheme } from "design/theme"
 
-type Line = { product_id: string; sku: string; name: string; unit: string; bin_id: string; bin_code: string; qty: number; avail: number };
+type Line = { product_id: string; sku: string; name: string; unit: string; bin_id: string; bin_code: string; qty: number; avail: number }
 
 const useStyles = makeStyles((c) => ({
   root: { flex: 1, backgroundColor: c.surface },
@@ -19,87 +20,87 @@ const useStyles = makeStyles((c) => ({
   typeBtn: { flex: 1, minHeight: 72, borderRadius: radius.md, borderWidth: 2, alignItems: "center", justifyContent: "center", gap: 2 },
   footer: { backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.divider, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   result: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 52, paddingHorizontal: spacing.md, borderRadius: radius.sm, backgroundColor: c.surfaceTertiary, gap: spacing.md },
-}));
+}))
 
 export default function NewRequest() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const toast = useToast();
-  const qc = useQueryClient();
-  const { user } = useAuth();
-  const p = useLocalSearchParams<{ type?: string; wh?: string; bin_id?: string; product_id?: string }>();
-  const [type, setType] = useState<"take" | "return">(p.type === "return" ? "return" : "take");
-  const [wh, setWh] = useState<string>(p.wh || user?.warehouse_id || "QLD");
-  const [driller, setDriller] = useState(user?.role === "driller" ? user.name : "");
-  const [rig, setRig] = useState("");
-  const [notes, setNotes] = useState("");
-  const [lines, setLines] = useState<Line[]>([]);
-  const [search, setSearch] = useState("");
-  const [busy, setBusy] = useState(false);
-  const clientRef = useRef(uid());
-  const drillers = useApi<any[]>("/drillers");
-  const rigs = useApi<any[]>("/rigs");
-  const kits = useApi<any[]>(rig ? `/kits?rig=${encodeURIComponent(rig)}&warehouse_id=${wh}` : null);
-  const results = useApi<any[]>(search.trim().length >= 2 ? `/products?warehouse_id=${wh}&q=${encodeURIComponent(search.trim())}` : null);
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const toast = useToast()
+  const qc = useQueryClient()
+  const { user } = useAuth()
+  const p = useLocalSearchParams<{ type?: string; wh?: string; bin_id?: string; product_id?: string }>()
+  const [type, setType] = useState<"take" | "return">(p.type === "return" ? "return" : "take")
+  const [wh, setWh] = useState<string>(p.wh || user?.warehouse_id || "QLD")
+  const [driller, setDriller] = useState(user?.role === "driller" ? user.name : "")
+  const [rig, setRig] = useState("")
+  const [notes, setNotes] = useState("")
+  const [lines, setLines] = useState<Line[]>([])
+  const [search, setSearch] = useState("")
+  const [busy, setBusy] = useState(false)
+  const clientRef = useRef(uid())
+  const drillers = useApi<any[]>("/drillers")
+  const rigs = useApi<any[]>("/rigs")
+  const kits = useApi<any[]>(rig ? `/kits?rig=${encodeURIComponent(rig)}&warehouse_id=${wh}` : null)
+  const results = useApi<any[]>(search.trim().length >= 2 ? `/products?warehouse_id=${wh}&q=${encodeURIComponent(search.trim())}` : null)
 
   useEffect(() => {
-    if (!p.bin_id || !p.product_id) return;
+    if (!p.bin_id || !p.product_id) return
     api(`/bins/${p.bin_id}`).then((b) => {
-      const it = b.items.find((x: any) => x.product_id === p.product_id);
-      if (it) setLines([{ product_id: it.product_id, sku: it.sku, name: it.name, unit: it.unit, bin_id: b.id, bin_code: b.code, qty: 1, avail: it.qty }]);
-    }).catch(() => {});
-  }, [p.bin_id, p.product_id]);
+      const it = b.items.find((x: any) => x.product_id === p.product_id)
+      if (it) setLines([{ product_id: it.product_id, sku: it.sku, name: it.name, unit: it.unit, bin_id: b.id, bin_code: b.code, qty: 1, avail: it.qty }])
+    }).catch(() => {})
+  }, [p.bin_id, p.product_id])
 
   const drillerOpts = useMemo(() => {
-    const names = (drillers.data || []).map((d) => d.name);
-    if (user && !names.includes(user.name)) names.unshift(user.name);
-    return names.map((n) => ({ label: n, value: n }));
-  }, [drillers.data, user]);
+    const names = (drillers.data || []).map((d) => d.name)
+    if (user && !names.includes(user.name)) names.unshift(user.name)
+    return names.map((n) => ({ label: n, value: n }))
+  }, [drillers.data, user])
 
   const addLine = (prod: any, loc: any) => {
-    if (lines.some((l) => l.product_id === prod.id && l.bin_id === loc.bin_id)) return toast("Already in this request", "info");
-    setLines([...lines, { product_id: prod.id, sku: prod.sku, name: prod.name, unit: prod.unit, bin_id: loc.bin_id, bin_code: loc.bin_code, qty: 1, avail: loc.qty }]);
-    setSearch("");
-  };
+    if (lines.some((l) => l.product_id === prod.id && l.bin_id === loc.bin_id)) return toast("Already in this request", "info")
+    setLines([...lines, { product_id: prod.id, sku: prod.sku, name: prod.name, unit: prod.unit, bin_id: loc.bin_id, bin_code: loc.bin_code, qty: 1, avail: loc.qty }])
+    setSearch("")
+  }
 
   const applyKit = (k: any) => {
-    const next = [...lines];
-    const skipped: string[] = [];
+    const next = [...lines]
+    const skipped: string[] = []
     for (const it of k.items) {
-      if (!it.bin_id || it.avail <= 0) { skipped.push(it.sku); continue; }
-      const qty = Math.min(it.qty, it.avail);
-      if (qty < it.qty) skipped.push(`${it.sku} (${qty}/${it.qty})`);
-      const i = next.findIndex((l) => l.product_id === it.product_id && l.bin_id === it.bin_id);
-      const line = { product_id: it.product_id, sku: it.sku, name: it.name, unit: it.unit, bin_id: it.bin_id, bin_code: it.bin_code, qty, avail: it.avail };
-      if (i >= 0) next[i] = line; else next.push(line);
+      if (!it.bin_id || it.avail <= 0) { skipped.push(it.sku); continue }
+      const qty = Math.min(it.qty, it.avail)
+      if (qty < it.qty) skipped.push(`${it.sku} (${qty}/${it.qty})`)
+      const i = next.findIndex((l) => l.product_id === it.product_id && l.bin_id === it.bin_id)
+      const line = { product_id: it.product_id, sku: it.sku, name: it.name, unit: it.unit, bin_id: it.bin_id, bin_code: it.bin_code, qty, avail: it.avail }
+      if (i >= 0) next[i] = line; else next.push(line)
     }
-    setLines(next);
-    if (!notes) setNotes(`Kit: ${k.name}`);
-    toast(skipped.length ? `Kit added · short: ${skipped.join(", ")}` : `${k.name} added`, skipped.length ? "info" : "success");
-  };
+    setLines(next)
+    if (!notes) setNotes(`Kit: ${k.name}`)
+    toast(skipped.length ? `Kit added · short: ${skipped.join(", ")}` : `${k.name} added`, skipped.length ? "info" : "success")
+  }
 
   const submit = async () => {
-    if (!driller) return toast("Select the driller name", "error");
-    if (!rig) return toast("Select a rig number", "error");
-    if (!lines.length) return toast("Add at least one item", "error");
-    const over = lines.find((l) => type === "take" && l.qty > l.avail);
-    if (over) return toast(`Only ${over.avail} ${over.unit} of ${over.sku} in ${over.bin_code}`, "error");
-    setBusy(true);
+    if (!driller) return toast("Select the driller name", "error")
+    if (!rig) return toast("Select a rig number", "error")
+    if (!lines.length) return toast("Add at least one item", "error")
+    const over = lines.find((l) => type === "take" && l.qty > l.avail)
+    if (over) return toast(`Only ${over.avail} ${over.unit} of ${over.sku} in ${over.bin_code}`, "error")
+    setBusy(true)
     try {
       const r = await api("/requests", { method: "POST", body: {
         type, warehouse_id: wh, driller_name: driller, rig_number: rig, notes, client_ref: clientRef.current,
-        items: lines.map((l) => ({ product_id: l.product_id, bin_id: l.bin_id, qty: l.qty })) } });
-      qc.invalidateQueries();
-      toast(`Request ${r.number} sent for approval`);
-      router.replace({ pathname: "/request/[id]", params: { id: r.id } });
+        items: lines.map((l) => ({ product_id: l.product_id, bin_id: l.bin_id, qty: l.qty })) } })
+      qc.invalidateQueries()
+      toast(`Request ${r.number} sent for approval`)
+      router.replace({ pathname: PATH.REQUEST_DETAIL, params: { id: r.id } })
     } catch (e: any) {
-      toast(e.message, "error");
+      toast(e.message, "error")
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
-  };
+  }
 
   return (
     <View style={s.root} testID="new-request-screen">
@@ -119,7 +120,7 @@ export default function NewRequest() {
           <View style={s.section}>
             <Label>Warehouse</Label>
             <View style={{ marginHorizontal: -spacing.lg }}>
-              <ChipRow testIDPrefix="request-wh" value={wh} onChange={(v) => { setWh(v); setLines([]); }} options={[{ label: "Queensland", value: "QLD" }, { label: "New South Wales", value: "NSW" }]} />
+              <ChipRow testIDPrefix="request-wh" value={wh} onChange={(v) => { setWh(v); setLines([]) }} options={[{ label: "Queensland", value: "QLD" }, { label: "New South Wales", value: "NSW" }]} />
             </View>
           </View>
         )}
@@ -172,10 +173,10 @@ export default function NewRequest() {
           ))}
           {!search && (
             <CommonItems wh={wh} rig={rig || undefined} onPick={(prod) => {
-              const locs = (prod.locations || []).filter((l: any) => l.warehouse_id === wh);
-              const loc = type === "take" ? [...locs].sort((a: any, b: any) => b.qty - a.qty)[0] : locs[0];
-              if (!loc || (type === "take" && loc.qty <= 0)) return toast(`No ${prod.sku} on hand in ${wh}`, "error");
-              addLine(prod, loc);
+              const locs = (prod.locations || []).filter((l: any) => l.warehouse_id === wh)
+              const loc = type === "take" ? [...locs].sort((a: any, b: any) => b.qty - a.qty)[0] : locs[0]
+              if (!loc || (type === "take" && loc.qty <= 0)) return toast(`No ${prod.sku} on hand in ${wh}`, "error")
+              addLine(prod, loc)
             }} />
           )}
           <Field testID="request-add-item-search" value={search} onChangeText={setSearch} placeholder="Add item: search SKU or name" autoCapitalize="characters" />
@@ -192,7 +193,7 @@ export default function NewRequest() {
               ))}
             </View>
           ))}
-          <Button testID="request-scan-bin" title="Scan a bin instead" icon="qrcode-scan" variant="ghost" onPress={() => router.push("/scan")} />
+          <Button testID="request-scan-bin" title="Scan a bin instead" icon="qrcode-scan" variant="ghost" onPress={() => router.push(PATH.SCAN)} />
         </View>
 
         <Field testID="request-notes-input" label="Notes (optional)" value={notes} onChangeText={setNotes} multiline placeholder="Hole ID, job number, reason…" />
@@ -203,5 +204,5 @@ export default function NewRequest() {
         </View>
       </KeyboardStickyView>
     </View>
-  );
+  )
 }

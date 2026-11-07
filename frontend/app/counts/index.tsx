@@ -1,47 +1,48 @@
-import { useState } from "react";
-import { FlatList, RefreshControl, View } from "react-native";
-import { useRouter } from "expo-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api } from "@/src/api";
-import { useAuth } from "@/src/auth";
-import { fmtDate, useApi } from "@/src/hooks";
-import { Body, Button, Card, Chip, ChipRow, EmptyState, ErrorState, Field, H3, Header, IconButton, Label, Loading, Mono, Row, Sheet, StatusPill, useToast } from "@/src/ui";
-import { makeStyles, spacing, useTheme } from "@/src/theme";
+import { PATH } from 'route/path'
+import { useState } from "react"
+import { FlatList, RefreshControl, View } from "react-native"
+import { useRouter } from "expo-router"
+import { useQueryClient } from "@tanstack/react-query"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { api } from "lib/api"
+import { useAuth } from "state/auth"
+import { fmtDate, useApi } from "lib/hooks"
+import { Body, Button, Card, Chip, ChipRow, EmptyState, ErrorState, Field, H3, Header, IconButton, Label, Loading, Mono, Row, Sheet, StatusPill, useToast } from "component/ui"
+import { makeStyles, spacing, useTheme } from "design/theme"
 
-const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface } }));
+const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface } }))
 
 export default function Counts() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const toast = useToast();
-  const qc = useQueryClient();
-  const { user } = useAuth();
-  const q = useApi<any[]>("/counts");
-  const [open, setOpen] = useState(false);
-  const [type, setType] = useState<"stocktake" | "cycle">("cycle");
-  const [wh, setWh] = useState(user?.warehouse_id || "QLD");
-  const [name, setName] = useState("");
-  const [sel, setSel] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
-  const bins = useApi<any[]>(open ? `/bins?warehouse_id=${wh}` : null);
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const toast = useToast()
+  const qc = useQueryClient()
+  const { user } = useAuth()
+  const q = useApi<any[]>("/counts")
+  const [open, setOpen] = useState(false)
+  const [type, setType] = useState<"stocktake" | "cycle">("cycle")
+  const [wh, setWh] = useState(user?.warehouse_id || "QLD")
+  const [name, setName] = useState("")
+  const [sel, setSel] = useState<string[]>([])
+  const [busy, setBusy] = useState(false)
+  const bins = useApi<any[]>(open ? `/bins?warehouse_id=${wh}` : null)
 
   const create = async () => {
-    setBusy(true);
+    setBusy(true)
     try {
-      const c = await api("/counts", { method: "POST", body: { warehouse_id: wh, type, bin_ids: type === "cycle" ? sel : [], name } });
-      qc.invalidateQueries();
-      setOpen(false);
-      setSel([]);
-      router.push({ pathname: "/counts/[id]", params: { id: c.id } });
+      const c = await api("/counts", { method: "POST", body: { warehouse_id: wh, type, bin_ids: type === "cycle" ? sel : [], name } })
+      qc.invalidateQueries()
+      setOpen(false)
+      setSel([])
+      router.push({ pathname: PATH.COUNT_DETAIL, params: { id: c.id } })
     } catch (e: any) {
-      toast(e.message, "error");
+      toast(e.message, "error")
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
-  };
+  }
 
   return (
     <View style={s.root} testID="counts-screen">
@@ -52,7 +53,7 @@ export default function Counts() {
           refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={q.refetch} />}
           ListEmptyComponent={<EmptyState icon="clipboard-check-outline" title="No counts yet" text="Start a cycle count on a few bins or a full stocktake" />}
           renderItem={({ item: c }) => (
-            <Card testID={`count-card-${c.number}`} onPress={() => router.push({ pathname: "/counts/[id]", params: { id: c.id } })} style={{ gap: spacing.sm }}>
+            <Card testID={`count-card-${c.number}`} onPress={() => router.push({ pathname: PATH.COUNT_DETAIL, params: { id: c.id } })} style={{ gap: spacing.sm }}>
               <Row style={{ justifyContent: "space-between" }}>
                 <Mono>{c.number}</Mono>
                 <StatusPill status={c.status} />
@@ -70,7 +71,7 @@ export default function Counts() {
         </Row>
         {user?.role === "admin" && (
           <View style={{ marginHorizontal: -spacing.xl }}>
-            <ChipRow testIDPrefix="count-wh" value={wh} onChange={(v) => { setWh(v); setSel([]); }} options={[{ label: "QLD", value: "QLD" }, { label: "NSW", value: "NSW" }]} />
+            <ChipRow testIDPrefix="count-wh" value={wh} onChange={(v) => { setWh(v); setSel([]) }} options={[{ label: "QLD", value: "QLD" }, { label: "NSW", value: "NSW" }]} />
           </View>
         )}
         <Field testID="count-name-input" placeholder="Name (optional)" value={name} onChangeText={setName} />
@@ -88,5 +89,5 @@ export default function Counts() {
         <Button testID="count-create-button" title="Start count" icon="play" loading={busy} disabled={type === "cycle" && sel.length === 0} onPress={create} />
       </Sheet>
     </View>
-  );
+  )
 }
