@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { Platform, Pressable, RefreshControl, ScrollView, View, useWindowDimensions } from "react-native";
-import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { isStaff, useAuth } from "@/src/auth";
@@ -10,13 +8,12 @@ import { usesNativeTabs } from "@/src/navigation";
 import { Body, Button, Card, ChipRow, ErrorState, H1, H3, Icon, IconButton, IconName, Label, Loading, Mono, Row, StatusPill } from "@/src/ui";
 import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
 
-const HERO = "https://images.unsplash.com/photo-1562237553-fd52cb2067b6?crop=entropy&cs=srgb&fm=jpg&q=70&w=1200";
 
 const useStyles = makeStyles((c) => ({
   root: { flex: 1, backgroundColor: c.surface },
-  hero: { height: 190, justifyContent: "flex-end" },
-  heroInner: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: 2 },
-  topRow: { position: "absolute", left: spacing.lg, right: spacing.lg, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  header: { paddingHorizontal: spacing.lg, gap: spacing.md },
+  heading: { gap: 2 },
+  topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md, paddingHorizontal: spacing.lg },
   tile: { width: "47.5%", minHeight: 112, borderRadius: radius.md, padding: spacing.lg, justifyContent: "space-between", borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceSecondary },
   tileText: { fontFamily: fonts.display, fontSize: 20, color: c.onSurface, textTransform: "uppercase", letterSpacing: 0.5 },
@@ -57,14 +54,12 @@ export default function Home() {
     <View style={s.root} testID="dashboard-screen">
       <ScrollView contentContainerStyle={{ paddingBottom: bottomChrome + spacing.xl, gap: spacing.lg, width: "100%", maxWidth: desktop ? 1520 : undefined, alignSelf: "center" }}
         refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={() => { q.refetch(); unread.refetch(); }} />}>
-        <View style={[s.hero, desktop && { height: 240 }]}>
-          <Image source={{ uri: HERO }} style={{ position: "absolute", width: "100%", height: "100%" }} contentFit="cover" />
-          <LinearGradient colors={["transparent", colors.scrim, colors.surface]} style={{ position: "absolute", width: "100%", height: "100%" }} />
-          <View style={[s.topRow, { top: insets.top + spacing.sm }]}>
+        <View style={[s.header, { paddingTop: insets.top + spacing.sm }]}>
+          <View style={s.topRow}>
             <StatusPill status={d?.zoho_mode || "mock"} label={d?.zoho_mode === "live" ? "Zoho live" : "Zoho mock"} testID="dashboard-zoho-status" />
             <IconButton testID="dashboard-notifications-button" icon="bell" badge={unread.data?.count} onPress={() => router.push("/notifications")} />
           </View>
-          <View style={s.heroInner}>
+          <View style={s.heading}>
             <Label>{user?.role === "driller" ? "Driller" : user?.role === "manager" ? `${user.warehouse_id} Manager` : "Admin · all warehouses"}</Label>
             <H1 testID="dashboard-user-name">{user?.name}</H1>
           </View>
