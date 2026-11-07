@@ -35,7 +35,7 @@ type Pick = { kind: "product" | "equipment"; id: string };
 function AreaChip({ area, color, compact = false }: { area: string; color: string; compact?: boolean }) {
   const { colors } = useTheme();
   return <View style={{ flexShrink: 1, borderRadius: 99, borderWidth: 1, borderColor: color, backgroundColor: colors.surfaceTertiary, paddingHorizontal: compact ? 5 : 8, paddingVertical: 3 }}>
-    <Text numberOfLines={1} style={{ color: colors.onSurfaceSecondary, fontSize: compact ? 9 : 10, fontWeight: "600" }}>{formatText('YETEFW', 'uppercase')}</Text>
+    <Text numberOfLines={1} style={{ color: colors.onSurfaceSecondary, fontSize: compact ? 9 : 10, fontWeight: "600" }}>{formatText(area, 'uppercase')}</Text>
   </View>;
 }
 
