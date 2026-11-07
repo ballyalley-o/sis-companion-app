@@ -1,88 +1,88 @@
-import { useEffect, useState } from "react";
-import { Pressable, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api } from "@/src/api";
-import { useAuth } from "@/src/auth";
-import { useApi } from "@/src/hooks";
-import { CommonItems, DidYouMean } from "@/src/suggest";
-import { Body, Button, Card, ChipRow, Field, Header, Icon, IconButton, Label, Loading, Mono, Row, Stepper, useToast } from "@/src/ui";
-import { makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { useEffect, useState } from "react"
+import { Pressable, View } from "react-native"
+import { useLocalSearchParams, useRouter } from "expo-router"
+import { useQueryClient } from "@tanstack/react-query"
+import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { api } from "lib/api"
+import { useAuth } from "state/auth"
+import { useApi } from "lib/hooks"
+import { CommonItems, DidYouMean } from "component/suggest"
+import { Body, Button, Card, ChipRow, Field, Header, Icon, IconButton, Label, Loading, Mono, Row, Stepper, useToast } from "component/ui"
+import { makeStyles, radius, spacing, useTheme } from "design/theme"
 
-type Item = { product_id: string; sku: string; name: string; unit: string; qty: number };
+type Item = { product_id: string; sku: string; name: string; unit: string; qty: number }
 
 const useStyles = makeStyles((c) => ({
   root: { flex: 1, backgroundColor: c.surface },
   footer: { backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.divider, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   result: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 56, paddingHorizontal: spacing.md, borderRadius: radius.sm, backgroundColor: c.surfaceTertiary, gap: spacing.md },
-}));
+}))
 
 export default function KitEditor() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const toast = useToast();
-  const qc = useQueryClient();
-  const { user } = useAuth();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const isNew = id === "new";
-  const kit = useApi<any>(isNew ? null : `/kits/${id}`);
-  const rigs = useApi<any[]>("/rigs");
-  const [wh, setWh] = useState<string>(user?.warehouse_id || "QLD");
-  const [rig, setRig] = useState("");
-  const [name, setName] = useState("");
-  const [items, setItems] = useState<Item[]>([]);
-  const [search, setSearch] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [loaded, setLoaded] = useState(isNew);
-  const results = useApi<any[]>(search.trim().length >= 2 ? `/products?warehouse_id=${wh}&q=${encodeURIComponent(search.trim())}` : null);
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const toast = useToast()
+  const qc = useQueryClient()
+  const { user } = useAuth()
+  const { id } = useLocalSearchParams<{ id: string }>()
+  const isNew = id === "new"
+  const kit = useApi<any>(isNew ? null : `/kits/${id}`)
+  const rigs = useApi<any[]>("/rigs")
+  const [wh, setWh] = useState<string>(user?.warehouse_id || "QLD")
+  const [rig, setRig] = useState("")
+  const [name, setName] = useState("")
+  const [items, setItems] = useState<Item[]>([])
+  const [search, setSearch] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [loaded, setLoaded] = useState(isNew)
+  const results = useApi<any[]>(search.trim().length >= 2 ? `/products?warehouse_id=${wh}&q=${encodeURIComponent(search.trim())}` : null)
 
   useEffect(() => {
     if (kit.data && !loaded) {
-      setWh(kit.data.warehouse_id); setRig(kit.data.rig_number); setName(kit.data.name);
-      setItems(kit.data.items.map((i: any) => ({ product_id: i.product_id, sku: i.sku, name: i.name, unit: i.unit, qty: i.qty })));
-      setLoaded(true);
+      setWh(kit.data.warehouse_id); setRig(kit.data.rig_number); setName(kit.data.name)
+      setItems(kit.data.items.map((i: any) => ({ product_id: i.product_id, sku: i.sku, name: i.name, unit: i.unit, qty: i.qty })))
+      setLoaded(true)
     }
-  }, [kit.data, loaded]);
+  }, [kit.data, loaded])
 
   const add = (p: any) => {
-    if (items.some((i) => i.product_id === p.id)) return toast(`${p.sku} already in kit`, "info");
-    setItems([...items, { product_id: p.id, sku: p.sku, name: p.name, unit: p.unit, qty: 1 }]);
-    setSearch("");
-  };
+    if (items.some((i) => i.product_id === p.id)) return toast(`${p.sku} already in kit`, "info")
+    setItems([...items, { product_id: p.id, sku: p.sku, name: p.name, unit: p.unit, qty: 1 }])
+    setSearch("")
+  }
 
   const save = async () => {
-    if (!rig) return toast("Select a rig", "error");
-    if (!items.length) return toast("Add at least one item", "error");
-    setBusy(true);
+    if (!rig) return toast("Select a rig", "error")
+    if (!items.length) return toast("Add at least one item", "error")
+    setBusy(true)
     try {
-      const body = { name, rig_number: rig, warehouse_id: wh, items: items.map((i) => ({ product_id: i.product_id, qty: i.qty })) };
-      await api(isNew ? "/kits" : `/kits/${id}`, { method: isNew ? "POST" : "PUT", body });
-      qc.invalidateQueries();
-      toast(isNew ? "Kit created" : "Kit saved");
-      router.back();
+      const body = { name, rig_number: rig, warehouse_id: wh, items: items.map((i) => ({ product_id: i.product_id, qty: i.qty })) }
+      await api(isNew ? "/kits" : `/kits/${id}`, { method: isNew ? "POST" : "PUT", body })
+      qc.invalidateQueries()
+      toast(isNew ? "Kit created" : "Kit saved")
+      router.back()
     } catch (e: any) {
-      toast(e.message, "error");
+      toast(e.message, "error")
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
-  };
+  }
 
   const remove = async () => {
     try {
-      await api(`/kits/${id}`, { method: "DELETE" });
-      qc.invalidateQueries();
-      toast("Kit deleted", "info");
-      router.back();
+      await api(`/kits/${id}`, { method: "DELETE" })
+      qc.invalidateQueries()
+      toast("Kit deleted", "info")
+      router.back()
     } catch (e: any) {
-      toast(e.message, "error");
+      toast(e.message, "error")
     }
-  };
+  }
 
-  if (!loaded) return <View style={s.root}><Header title="Rig kit" /><Loading /></View>;
+  if (!loaded) return <View style={s.root}><Header title="Rig kit" /><Loading /></View>
 
   return (
     <View style={s.root} testID="kit-editor-screen">
@@ -135,5 +135,5 @@ export default function KitEditor() {
         </View>
       </KeyboardStickyView>
     </View>
-  );
+  )
 }

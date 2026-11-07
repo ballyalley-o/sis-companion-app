@@ -1,21 +1,23 @@
-import { useEffect, useState } from "react";
-import { Platform, Pressable, useWindowDimensions, View } from "react-native";
-import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAuth } from "@/src/auth";
-import { Body, Button, Field, H1, Icon, Label, Row, useToast } from "@/src/ui";
-import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { GLOBAL } from 'config/global.config'
+import { PATH } from 'route/path'
+import { useEffect, useState } from "react"
+import { Platform, Pressable, useWindowDimensions, View } from "react-native"
+import { Image } from "expo-image"
+import { LinearGradient } from "expo-linear-gradient"
+import { useLocalSearchParams, useRouter } from "expo-router"
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useAuth } from "state/auth"
+import { Body, Button, Field, H1, Icon, Label, Row, useToast } from "component/ui"
+import { fonts, makeStyles, radius, spacing, useTheme } from "design/theme"
 
-const HERO = "https://images.unsplash.com/photo-1562237553-fd52cb2067b6?crop=entropy&cs=srgb&fm=jpg&q=70&w=1200";
+const HERO = "https://images.unsplash.com/photo-1562237553-fd52cb2067b6?crop=entropy&cs=srgb&fm=jpg&q=70&w=1200"
 
-const DEMO = process.env.EXPO_PUBLIC_ENABLE_DEMO_ACCOUNTS === "true" ? [
-  { label: "Driller", email: process.env.EXPO_PUBLIC_DEMO_DRILLER_EMAIL || "", pw: process.env.EXPO_PUBLIC_DEMO_DRILLER_PASSWORD || "" },
-  { label: "QLD Mgr", email: process.env.EXPO_PUBLIC_DEMO_MANAGER_EMAIL || "", pw: process.env.EXPO_PUBLIC_DEMO_MANAGER_PASSWORD || "" },
-  { label: "Admin", email: process.env.EXPO_PUBLIC_DEMO_ADMIN_EMAIL || "", pw: process.env.EXPO_PUBLIC_DEMO_ADMIN_PASSWORD || "" },
-].filter((account) => account.email && account.pw) : [];
+const DEMO = GLOBAL.ENABLE_DEMO_ACCOUNTS === "true" ? [
+  { label: "Driller", email: GLOBAL.DEMO_DRILLER_EMAIL || "", pw: GLOBAL.DEMO_DRILLER_PASSWORD || "" },
+  { label: "QLD Mgr", email: GLOBAL.DEMO_MANAGER_EMAIL || "", pw: GLOBAL.DEMO_MANAGER_PASSWORD || "" },
+  { label: "Admin", email: GLOBAL.DEMO_ADMIN_EMAIL || "", pw: GLOBAL.DEMO_ADMIN_PASSWORD || "" },
+].filter((account) => account.email && account.pw) : []
 
 const useStyles = makeStyles((c) => ({
   root: { flex: 1, backgroundColor: c.surface },
@@ -31,52 +33,52 @@ const useStyles = makeStyles((c) => ({
   desktopPanel: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.xxl },
   desktopForm: { width: "100%", maxWidth: 420, padding: 0 },
   feature: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-}));
+}))
 
 export default function Login() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
-  const desktop = Platform.OS === "web" && width >= 960;
-  const { login, loginWithGoogle, user } = useAuth();
-  const toast = useToast();
-  const router = useRouter();
-  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
-  const destination = returnTo?.startsWith("/bin/") && !returnTo.startsWith("//") ? returnTo : "/(tabs)";
-  const [email, setEmail] = useState("");
-  const [pw, setPw] = useState("");
-  const [show, setShow] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const { width, height } = useWindowDimensions()
+  const desktop = Platform.OS === "web" && width >= 960
+  const { login, loginWithGoogle, user } = useAuth()
+  const toast = useToast()
+  const router = useRouter()
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>()
+  const destination = returnTo?.startsWith("/bin/") && !returnTo.startsWith("//") ? returnTo : PATH.TABS
+  const [email, setEmail] = useState("")
+  const [pw, setPw] = useState("")
+  const [show, setShow] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const googleClientId = GLOBAL.GOOGLE_CLIENT_ID
 
   useEffect(() => {
-    if (user) router.replace(destination as any);
-  }, [destination, user, router]);
+    if (user) router.replace(destination as any)
+  }, [destination, user, router])
 
   useEffect(() => {
-    if (Platform.OS !== "web" || !googleClientId) return;
-    const container = document.getElementById("google-signin-button");
-    if (!container) return;
+    if (Platform.OS !== "web" || !googleClientId) return
+    const container = document.getElementById("google-signin-button")
+    if (!container) return
 
-    let timer: number | undefined;
-    let attempts = 0;
+    let timer: number | undefined
+    let attempts = 0
     const initialize = () => {
-      const google = (window as any).google;
+      const google = (window as any).google
       if (!google?.accounts?.id) {
         if (attempts++ >= 50) {
-          toast("Google sign-in failed to load", "error");
-          return;
+          toast("Google sign-in failed to load", "error")
+          return
         }
-        timer = window.setTimeout(initialize, 100);
-        return;
+        timer = window.setTimeout(initialize, 100)
+        return
       }
       google.accounts.id.initialize({
         client_id: googleClientId,
         callback: (response: { credential: string }) => {
-          loginWithGoogle(response.credential).catch((error: Error) => toast(error.message || "Google sign-in failed", "error"));
+          loginWithGoogle(response.credential).catch((error: Error) => toast(error.message || "Google sign-in failed", "error"))
         },
-      });
+      })
       google.accounts.id.renderButton(container, {
         type: "standard",
         theme: "outline",
@@ -84,27 +86,27 @@ export default function Login() {
         text: "continue_with",
         shape: "rectangular",
         width: Math.min(container.clientWidth || 320, 400),
-      });
-    };
-    initialize();
+      })
+    }
+    initialize()
     return () => {
-      if (timer !== undefined) window.clearTimeout(timer);
-      container.replaceChildren();
-    };
-  }, [googleClientId, loginWithGoogle, toast]);
+      if (timer !== undefined) window.clearTimeout(timer)
+      container.replaceChildren()
+    }
+  }, [googleClientId, loginWithGoogle, toast])
 
   const submit = async () => {
-    if (!email || !pw) return toast("Enter email and password", "error");
-    setBusy(true);
+    if (!email || !pw) return toast("Enter email and password", "error")
+    setBusy(true)
     try {
-      await login(email.trim(), pw);
-      router.replace(destination as any);
+      await login(email.trim(), pw)
+      router.replace(destination as any)
     } catch (e: any) {
-      toast(e.message, "error");
+      toast(e.message, "error")
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
-  };
+  }
 
   return (
     <View style={s.root}>
@@ -161,7 +163,7 @@ export default function Login() {
             </View>
             <Row>
               {DEMO.map((d) => (
-                <Pressable key={d.label} testID={`demo-login-${d.label.toLowerCase().replace(" ", "-")}`} accessibilityRole="button" accessibilityLabel={`Fill ${d.label} demo login`} disabled={busy} style={s.demo} onPress={() => { setEmail(d.email); setPw(d.pw); }}>
+                <Pressable key={d.label} testID={`demo-login-${d.label.toLowerCase().replace(" ", "-")}`} accessibilityRole="button" accessibilityLabel={`Fill ${d.label} demo login`} disabled={busy} style={s.demo} onPress={() => { setEmail(d.email); setPw(d.pw) }}>
                   <Body style={{ fontWeight: "700", color: colors.onSurface }}>{d.label}</Body>
                 </Pressable>
               ))}
@@ -171,5 +173,5 @@ export default function Login() {
         </View>
       </KeyboardAwareScrollView>
     </View>
-  );
+  )
 }

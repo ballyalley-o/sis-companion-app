@@ -82,7 +82,7 @@ Lower bins are provisionally numbered B1–B8. Confirm this interpretation and n
 The rack view displays levels top-to-bottom with the shorter lower rows centred for illustration.
 No alignment between those lower positions and upper bay numbers is asserted.
 For SEC4 the floor overview highlights only the section; the rack view highlights the specific bin.
-Edit the geometry and limits in `frontend/src/warehouseMap.ts` after warehouse validation.
+Edit the geometry and limits in `frontend/src/lib/tool/warehouse-map.ts` after warehouse validation.
 
 Bin codes matching SECn-Ln-Bn are checked against reference bounds. Invalid or out-of-range
 codes display an unmapped message rather than an invented marker. A floor bay is highlighted;

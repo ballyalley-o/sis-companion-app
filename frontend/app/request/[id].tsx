@@ -1,37 +1,37 @@
-import { ScrollView, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api } from "@/src/api";
-import { isStaff, useAuth } from "@/src/auth";
-import { fmtDate, useApi } from "@/src/hooks";
-import { Body, Button, Card, ErrorState, H3, Header, Label, Loading, Mono, Row, StatusPill, useToast } from "@/src/ui";
-import { makeStyles, spacing, useTheme } from "@/src/theme";
-import { useDecision } from "@/src/decision";
+import { ScrollView, View } from "react-native"
+import { useLocalSearchParams } from "expo-router"
+import { useQueryClient } from "@tanstack/react-query"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { api } from "lib/api"
+import { isStaff, useAuth } from "state/auth"
+import { fmtDate, useApi } from "lib/hooks"
+import { Body, Button, Card, ErrorState, H3, Header, Label, Loading, Mono, Row, StatusPill, useToast } from "component/ui"
+import { makeStyles, spacing, useTheme } from "design/theme"
+import { useDecision } from "component/decision"
 
-const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface } }));
+const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface } }))
 
 export default function RequestDetail() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const toast = useToast();
-  const qc = useQueryClient();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
-  const q = useApi<any>(`/requests/${id}`);
-  const d = useDecision();
-  const r = q.data;
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const toast = useToast()
+  const qc = useQueryClient()
+  const { id } = useLocalSearchParams<{ id: string }>()
+  const { user } = useAuth()
+  const q = useApi<any>(`/requests/${id}`)
+  const d = useDecision()
+  const r = q.data
 
   const cancel = async () => {
     try {
-      await api(`/requests/${id}/cancel`, { method: "POST" });
-      toast("Request cancelled", "info");
-      qc.invalidateQueries();
+      await api(`/requests/${id}/cancel`, { method: "POST" })
+      toast("Request cancelled", "info")
+      qc.invalidateQueries()
     } catch (e: any) {
-      toast(e.message, "error");
+      toast(e.message, "error")
     }
-  };
+  }
 
   return (
     <View style={s.root} testID="request-detail-screen">
@@ -93,5 +93,5 @@ export default function RequestDetail() {
       )}
       {d.sheet}
     </View>
-  );
+  )
 }

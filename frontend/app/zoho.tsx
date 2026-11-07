@@ -1,89 +1,90 @@
-import { useEffect, useState } from "react";
-import { View } from "react-native";
-import * as WebBrowser from "expo-web-browser";
-import { useQueryClient } from "@tanstack/react-query";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api } from "@/src/api";
-import { fmtDate, useApi } from "@/src/hooks";
-import { Body, Button, Card, Chip, ChipRow, Field, H3, Header, Label, Loading, Mono, Row, StatusPill, useToast } from "@/src/ui";
-import { makeStyles, spacing, useTheme } from "@/src/theme";
+import { GLOBAL } from 'config/global.config'
+import { useEffect, useState } from "react"
+import { View } from "react-native"
+import * as WebBrowser from "expo-web-browser"
+import { useQueryClient } from "@tanstack/react-query"
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { api } from "lib/api"
+import { fmtDate, useApi } from "lib/hooks"
+import { Body, Button, Card, Chip, ChipRow, Field, H3, Header, Label, Loading, Mono, Row, StatusPill, useToast } from "component/ui"
+import { makeStyles, spacing, useTheme } from "design/theme"
 
-const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface } }));
+const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface } }))
 
 export default function Zoho() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const toast = useToast();
-  const qc = useQueryClient();
-  const q = useApi<any>("/zoho/settings");
-  const log = useApi<any[]>("/zoho/sync-log");
-  const [f, setF] = useState<any>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [locs, setLocs] = useState<any[] | null>(null);
-  const [importRes, setImportRes] = useState<any>(null);
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const toast = useToast()
+  const qc = useQueryClient()
+  const q = useApi<any>("/zoho/settings")
+  const log = useApi<any[]>("/zoho/sync-log")
+  const [f, setF] = useState<any>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [locs, setLocs] = useState<any[] | null>(null)
+  const [importRes, setImportRes] = useState<any>(null)
   useEffect(() => {
     if (q.data && !f) {
       setF({ ...q.data, client_secret: "", mode: q.data.selected_mode,
-        redirect_uri: q.data.redirect_uri || `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/zoho/callback` });
+        redirect_uri: q.data.redirect_uri || `${GLOBAL.BACKEND_URL}/api/zoho/callback` })
     }
-  }, [q.data, f]);
-  const set = (k: string) => (v: string) => setF({ ...f, [k]: v });
-  const consoleUrl = `https://api-console.zoho.${f?.data_center || "com.au"}`;
+  }, [q.data, f])
+  const set = (k: string) => (v: string) => setF({ ...f, [k]: v })
+  const consoleUrl = `https://api-console.zoho.${f?.data_center || "com.au"}`
 
   const loadLocations = async () => {
-    setBusy("locs");
+    setBusy("locs")
     try {
-      const r = await api("/zoho/locations");
-      setLocs(r.locations);
+      const r = await api("/zoho/locations")
+      setLocs(r.locations)
       // auto-suggest mapping by location name
-      const find = (re: RegExp) => r.locations.find((l: any) => re.test(`${l.name} ${l.state || ""}`))?.id;
-      const qld = find(/queensland|\bqld\b/i);
-      const nsw = find(/new south wales|\bnsw\b/i);
-      setF((cur: any) => ({ ...cur, qld_warehouse_id: cur.qld_warehouse_id || qld || "", nsw_warehouse_id: cur.nsw_warehouse_id || nsw || "" }));
-      if (qld || nsw) toast("Locations matched by name — check and tap Save settings", "info");
-    } catch (e: any) { toast(e.message, "error"); } finally { setBusy(null); }
-  };
+      const find = (re: RegExp) => r.locations.find((l: any) => re.test(`${l.name} ${l.state || ""}`))?.id
+      const qld = find(/queensland|\bqld\b/i)
+      const nsw = find(/new south wales|\bnsw\b/i)
+      setF((cur: any) => ({ ...cur, qld_warehouse_id: cur.qld_warehouse_id || qld || "", nsw_warehouse_id: cur.nsw_warehouse_id || nsw || "" }))
+      if (qld || nsw) toast("Locations matched by name — check and tap Save settings", "info")
+    } catch (e: any) { toast(e.message, "error") } finally { setBusy(null) }
+  }
   const runImport = async () => {
-    setBusy("import");
+    setBusy("import")
     try {
-      const r = await api("/zoho/import", { method: "POST", body: { sync_stock: true } });
-      setImportRes(r);
-      toast(`Imported: ${r.created} new, ${r.updated} updated, ${r.stock_adjusted} stock lines aligned`);
-      qc.invalidateQueries();
-    } catch (e: any) { toast(e.message, "error"); } finally { setBusy(null); }
-  };
+      const r = await api("/zoho/import", { method: "POST", body: { sync_stock: true } })
+      setImportRes(r)
+      toast(`Imported: ${r.created} new, ${r.updated} updated, ${r.stock_adjusted} stock lines aligned`)
+      qc.invalidateQueries()
+    } catch (e: any) { toast(e.message, "error") } finally { setBusy(null) }
+  }
 
   const save = async () => {
-    setBusy("save");
+    setBusy("save")
     try {
       const r = await api("/zoho/settings", { method: "PUT", body: {
         client_id: f.client_id, client_secret: f.client_secret, organization_id: f.organization_id, data_center: f.data_center,
         redirect_uri: f.redirect_uri, qld_warehouse_id: f.qld_warehouse_id, nsw_warehouse_id: f.nsw_warehouse_id,
-        adjustment_account_id: f.adjustment_account_id || "", mode: f.mode, auto_sync: true } });
-      setF({ ...r, client_secret: "", mode: r.selected_mode });
-      toast("Zoho settings saved");
-      qc.invalidateQueries();
-    } catch (e: any) { toast(e.message, "error"); } finally { setBusy(null); }
-  };
+        adjustment_account_id: f.adjustment_account_id || "", mode: f.mode, auto_sync: true } })
+      setF({ ...r, client_secret: "", mode: r.selected_mode })
+      toast("Zoho settings saved")
+      qc.invalidateQueries()
+    } catch (e: any) { toast(e.message, "error") } finally { setBusy(null) }
+  }
   const connect = async () => {
-    setBusy("connect");
+    setBusy("connect")
     try {
-      const r = await api("/zoho/connect", { method: "POST" });
+      const r = await api("/zoho/connect", { method: "POST" })
       if (r.auth_url) {
-        await WebBrowser.openBrowserAsync(r.auth_url);
-        await q.refetch();
-        setF(null); // re-seed form with auto-detected org / data center
-      } else toast("Connected in mock mode — transactions are simulated");
-      qc.invalidateQueries();
-    } catch (e: any) { toast(e.message, "error"); } finally { setBusy(null); }
-  };
+        await WebBrowser.openBrowserAsync(r.auth_url)
+        await q.refetch()
+        setF(null) // re-seed form with auto-detected org / data center
+      } else toast("Connected in mock mode — transactions are simulated")
+      qc.invalidateQueries()
+    } catch (e: any) { toast(e.message, "error") } finally { setBusy(null) }
+  }
   const disconnect = async () => {
-    await api("/zoho/disconnect", { method: "POST" }).catch(() => {});
-    toast("Disconnected", "info");
-    qc.invalidateQueries();
-  };
+    await api("/zoho/disconnect", { method: "POST" }).catch(() => {})
+    toast("Disconnected", "info")
+    qc.invalidateQueries()
+  }
 
   return (
     <View style={s.root} testID="zoho-screen">
@@ -139,7 +140,7 @@ export default function Zoho() {
               ))}
             </Row>
           )}
-          <Field testID="zoho-redirect-input" label="Redirect URI" value={f.redirect_uri} onChangeText={set("redirect_uri")} autoCapitalize="none" placeholder={`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/zoho/callback`} />
+          <Field testID="zoho-redirect-input" label="Redirect URI" value={f.redirect_uri} onChangeText={set("redirect_uri")} autoCapitalize="none" placeholder={`${GLOBAL.BACKEND_URL}/api/zoho/callback`} />
           <View style={{ gap: spacing.sm }}>
             <Label>Data center</Label>
             <View style={{ marginHorizontal: -spacing.lg }}>
@@ -195,5 +196,5 @@ export default function Zoho() {
         </KeyboardAwareScrollView>
       )}
     </View>
-  );
+  )
 }

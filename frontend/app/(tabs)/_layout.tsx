@@ -1,25 +1,26 @@
-import { Image } from "expo-image";
-import { Redirect, Tabs, useRouter } from "expo-router";
-import { NativeTabs } from "expo-router/unstable-native-tabs";
-import { Platform, Pressable, useWindowDimensions, View } from "react-native";
-import { useAuth } from "@/src/auth";
-import { usesNativeTabs } from "@/src/navigation";
-import { Body, Icon, Label, Loading } from "@/src/ui";
-import { fonts, makeStyles, spacing, useTheme } from "@/src/theme";
+import { PATH } from 'route/path'
+import { Image } from "expo-image"
+import { Redirect, Tabs, useRouter } from "expo-router"
+import { NativeTabs } from "expo-router/unstable-native-tabs"
+import { Platform, Pressable, useWindowDimensions, View } from "react-native"
+import { useAuth } from "state/auth"
+import { usesNativeTabs } from "config/navigation"
+import { Body, Icon, Label, Loading } from "component/ui"
+import { fonts, makeStyles, spacing, useTheme } from "design/theme"
 
 const sidebarStyles = makeStyles((c) => ({
   root: { width: 248, height: "100%", flexGrow: 0, flexShrink: 0, backgroundColor: c.surfaceSecondary, borderRightWidth: 1, borderRightColor: c.border, padding: spacing.lg, gap: spacing.xl },
   brand: { paddingVertical: spacing.md, paddingHorizontal: spacing.sm, flexDirection: "row", alignItems: "center", gap: spacing.xs },
   nav: { gap: 6 },
   item: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: spacing.md, paddingHorizontal: spacing.md, borderRadius: 6 },
-}));
+}))
 
 function DesktopSidebar({ state, descriptors, navigation, user }: any) {
-  const router = useRouter();
-  const s = sidebarStyles();
-  const { colors } = useTheme();
+  const router = useRouter()
+  const s = sidebarStyles()
+  const { colors } = useTheme()
   const items = state.routes.filter((route: any) => descriptors[route.key]?.options?.href !== null
-    && !(user?.role === "driller" && descriptors[route.key]?.options?.title === "Orders"));
+    && !(user?.role === "driller" && descriptors[route.key]?.options?.title === "Orders"))
   return (
     <View style={s.root}>
       <View style={s.brand}>
@@ -30,34 +31,34 @@ function DesktopSidebar({ state, descriptors, navigation, user }: any) {
       </View>
       <View style={s.nav}>
         {items.map((route: any) => {
-          const { options } = descriptors[route.key];
-          const focused = state.routes[state.index]?.key === route.key;
-          const color = focused ? colors.onBrandPrimary : colors.onSurfaceSecondary;
-          const icon = options.tabBarIcon?.({ focused, color, size: 20 });
+          const { options } = descriptors[route.key]
+          const focused = state.routes[state.index]?.key === route.key
+          const color = focused ? colors.onBrandPrimary : colors.onSurfaceSecondary
+          const icon = options.tabBarIcon?.({ focused, color, size: 20 })
           return (
             <Pressable key={route.key} onPress={() => navigation.navigate(route.name)} style={[s.item, focused && { backgroundColor: colors.brandPrimary }]}>
               {icon}
               <Body style={{ color, fontWeight: focused ? "800" : "600", fontSize: 14 }}>{String(options.title || route.name)}</Body>
             </Pressable>
-          );
+          )
         })}
-        <Pressable testID="sidebar-warehouse-map" onPress={() => router.push("/warehouse-map")} style={s.item}>
+        <Pressable testID="sidebar-warehouse-map" onPress={() => router.push(PATH.WAREHOUSE_MAP)} style={s.item}>
           <Icon name="map-marker" size={20} color={colors.onSurfaceSecondary} />
           <Body style={{ color: colors.onSurfaceSecondary, fontWeight: "600", fontSize: 14 }}>Warehouse map</Body>
         </Pressable>
       </View>
       <View style={{ marginTop: "auto", padding: spacing.sm }}><Label>QLD · NSW STOCK OPERATIONS</Label></View>
     </View>
-  );
+  )
 }
 
 export default function TabsLayout() {
-  const { user, ready } = useAuth();
-  const { colors } = useTheme();
-  const { width } = useWindowDimensions();
-  const desktop = Platform.OS === "web" && width >= 1000;
-  if (!ready) return <View style={{ flex: 1, backgroundColor: colors.surface }}><Loading /></View>;
-  if (!user) return <Redirect href="/login" />;
+  const { user, ready } = useAuth()
+  const { colors } = useTheme()
+  const { width } = useWindowDimensions()
+  const desktop = Platform.OS === "web" && width >= 1000
+  if (!ready) return <View style={{ flex: 1, backgroundColor: colors.surface }}><Loading /></View>
+  if (!user) return <Redirect href={PATH.LOGIN} />
 
   if (usesNativeTabs) {
     return (
@@ -79,7 +80,7 @@ export default function TabsLayout() {
           <NativeTabs.Trigger.Label>More</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       </NativeTabs>
-    );
+    )
   }
 
   return (
@@ -103,5 +104,5 @@ export default function TabsLayout() {
       <Tabs.Screen name="orders" options={{ title: "Orders", href: user?.role === "driller" ? null : "/(tabs)/orders", tabBarButtonTestID: "tab-orders", tabBarIcon: ({ color }) => <Icon name="clipboard-list-outline" size={26} color={color} /> }} />
       <Tabs.Screen name="more" options={{ title: "More", tabBarButtonTestID: "tab-more", tabBarIcon: ({ color }) => <Icon name="menu" size={26} color={color} /> }} />
     </Tabs>
-  );
+  )
 }

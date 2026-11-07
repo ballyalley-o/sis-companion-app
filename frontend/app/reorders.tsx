@@ -1,33 +1,34 @@
-import { useState } from "react";
-import { FlatList, RefreshControl, View } from "react-native";
-import { useRouter } from "expo-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api } from "@/src/api";
-import { fmtDate, useApi } from "@/src/hooks";
-import { Body, Button, Card, ChipRow, EmptyState, ErrorState, Header, Label, Loading, Mono, Row, StatusPill, useToast } from "@/src/ui";
-import { makeStyles, spacing, useTheme } from "@/src/theme";
+import { PATH } from 'route/path'
+import { useState } from "react"
+import { FlatList, RefreshControl, View } from "react-native"
+import { useRouter } from "expo-router"
+import { useQueryClient } from "@tanstack/react-query"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { api } from "lib/api"
+import { fmtDate, useApi } from "lib/hooks"
+import { Body, Button, Card, ChipRow, EmptyState, ErrorState, Header, Label, Loading, Mono, Row, StatusPill, useToast } from "component/ui"
+import { makeStyles, spacing, useTheme } from "design/theme"
 
-const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface }, chips: { borderBottomWidth: 1, borderBottomColor: c.divider } }));
-const pill = (s: string) => (s === "open" ? "pending" : s === "ordered" ? "processing" : s === "received" ? "approved" : "cancelled");
+const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface }, chips: { borderBottomWidth: 1, borderBottomColor: c.divider } }))
+const pill = (s: string) => (s === "open" ? "pending" : s === "ordered" ? "processing" : s === "received" ? "approved" : "cancelled")
 
 export default function Reorders() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const toast = useToast();
-  const qc = useQueryClient();
-  const [status, setStatus] = useState("open");
-  const q = useApi<any[]>(`/reorders?status=${status}`);
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const toast = useToast()
+  const qc = useQueryClient()
+  const [status, setStatus] = useState("open")
+  const q = useApi<any[]>(`/reorders?status=${status}`)
 
   const setSt = async (r: any, st: "ordered" | "cancelled") => {
     try {
-      await api(`/reorders/${r.id}/status`, { method: "POST", body: { status: st } });
-      toast(`${r.number} ${st}`);
-      qc.invalidateQueries();
-    } catch (e: any) { toast(e.message, "error"); }
-  };
+      await api(`/reorders/${r.id}/status`, { method: "POST", body: { status: st } })
+      toast(`${r.number} ${st}`)
+      qc.invalidateQueries()
+    } catch (e: any) { toast(e.message, "error") }
+  }
 
   return (
     <View style={s.root} testID="reorders-screen">
@@ -58,14 +59,14 @@ export default function Reorders() {
                 <Row>
                   {r.status === "open" && <Button testID={`reorder-ordered-${r.number}`} title="Ordered" variant="secondary" style={{ flex: 1 }} onPress={() => setSt(r, "ordered")} />}
                   <Button testID={`reorder-receive-${r.number}`} title="Receive" variant="success" icon="truck-check" style={{ flex: 1 }}
-                    onPress={() => router.push({ pathname: "/receive", params: { wh: r.warehouse_id, reorder_id: r.id } })} />
+                    onPress={() => router.push({ pathname: PATH.RECEIVE, params: { wh: r.warehouse_id, reorder_id: r.id } })} />
                   <Button testID={`reorder-cancel-${r.number}`} title="Cancel" variant="danger" style={{ flex: 1 }} onPress={() => setSt(r, "cancelled")} />
                 </Row>
               )}
-              {r.trip_id && <Button testID={`reorder-trip-${r.number}`} title="View trip" variant="ghost" icon="calendar" onPress={() => router.push({ pathname: "/trips/[id]", params: { id: r.trip_id } })} />}
+              {r.trip_id && <Button testID={`reorder-trip-${r.number}`} title="View trip" variant="ghost" icon="calendar" onPress={() => router.push({ pathname: PATH.TRIPS_DETAIL, params: { id: r.trip_id } })} />}
             </Card>
           )} />
       )}
     </View>
-  );
+  )
 }

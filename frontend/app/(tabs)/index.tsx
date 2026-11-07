@@ -1,12 +1,13 @@
-import { useState } from "react";
-import { Platform, Pressable, RefreshControl, ScrollView, View, useWindowDimensions } from "react-native";
-import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { isStaff, useAuth } from "@/src/auth";
-import { fmtDate, useApi } from "@/src/hooks";
-import { usesNativeTabs } from "@/src/navigation";
-import { Body, Button, Card, ChipRow, ErrorState, H1, H3, Icon, IconButton, IconName, Label, Loading, Mono, Row, StatusPill } from "@/src/ui";
-import { fonts, makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { PATH } from 'route/path'
+import { useState } from "react"
+import { Platform, Pressable, RefreshControl, ScrollView, View, useWindowDimensions } from "react-native"
+import { useRouter } from "expo-router"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { isStaff, useAuth } from "state/auth"
+import { fmtDate, useApi } from "lib/hooks"
+import { usesNativeTabs } from "config/navigation"
+import { Body, Button, Card, ChipRow, ErrorState, H1, H3, Icon, IconButton, IconName, Label, Loading, Mono, Row, StatusPill } from "component/ui"
+import { fonts, makeStyles, radius, spacing, useTheme } from "design/theme"
 
 
 const useStyles = makeStyles((c) => ({
@@ -22,42 +23,42 @@ const useStyles = makeStyles((c) => ({
   statNum: { fontFamily: fonts.display, fontSize: 34, color: c.onSurface },
   section: { paddingHorizontal: spacing.lg, gap: spacing.sm },
   rowItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: c.divider, gap: spacing.md },
-}));
+}))
 
 function Tile({ icon, label, onPress, primary, testID, desktop }: { icon: IconName; label: string; onPress: () => void; primary?: boolean; testID: string; desktop?: boolean }) {
-  const s = useStyles();
-  const { colors } = useTheme();
+  const s = useStyles()
+  const { colors } = useTheme()
   return (
     <Pressable testID={testID} onPress={onPress} style={({ pressed }) => [s.tile, { width: desktop ? "31.5%" : "47.5%" }, primary && { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary }, pressed && { transform: [{ scale: 0.97 }] }]}>
       <Icon name={icon} size={36} color={primary ? colors.onBrandPrimary : colors.brandPrimary} />
       <Body style={[s.tileText, primary && { color: colors.onBrandPrimary }]}>{label}</Body>
     </Pressable>
-  );
+  )
 }
 
 export default function Home() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const { user } = useAuth();
-  const { width } = useWindowDimensions();
-  const desktop = Platform.OS === "web" && width >= 1000;
-  const staff = isStaff(user);
-  const [wh, setWh] = useState<string>(user?.role === "admin" ? "ALL" : user?.warehouse_id || "ALL");
-  const q = useApi<any>(`/dashboard${wh !== "ALL" && user?.role !== "manager" ? `?warehouse_id=${wh}` : ""}`);
-  const unread = useApi<{ count: number }>("/notifications/unread-count");
-  const bottomChrome = usesNativeTabs ? insets.bottom : 0;
-  const d = q.data;
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const { user } = useAuth()
+  const { width } = useWindowDimensions()
+  const desktop = Platform.OS === "web" && width >= 1000
+  const staff = isStaff(user)
+  const [wh, setWh] = useState<string>(user?.role === "admin" ? "ALL" : user?.warehouse_id || "ALL")
+  const q = useApi<any>(`/dashboard${wh !== "ALL" && user?.role !== "manager" ? `?warehouse_id=${wh}` : ""}`)
+  const unread = useApi<{ count: number }>("/notifications/unread-count")
+  const bottomChrome = usesNativeTabs ? insets.bottom : 0
+  const d = q.data
 
   return (
     <View style={s.root} testID="dashboard-screen">
       <ScrollView contentContainerStyle={{ paddingBottom: bottomChrome + spacing.xl, gap: spacing.lg, width: "100%", maxWidth: desktop ? 1520 : undefined, alignSelf: "center" }}
-        refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={() => { q.refetch(); unread.refetch(); }} />}>
+        refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={() => { q.refetch(); unread.refetch() }} />}>
         <View style={[s.header, { paddingTop: insets.top + spacing.sm }]}>
           <View style={s.topRow}>
             <StatusPill status={d?.zoho_mode || "mock"} label={d?.zoho_mode === "live" ? "Zoho live" : "Zoho mock"} testID="dashboard-zoho-status" />
-            <IconButton testID="dashboard-notifications-button" icon="bell" badge={unread.data?.count} onPress={() => router.push("/notifications")} />
+            <IconButton testID="dashboard-notifications-button" icon="bell" badge={unread.data?.count} onPress={() => router.push(PATH.NOTIFICATIONS)} />
           </View>
           <View style={s.heading}>
             <Label>{user?.role === "driller" ? "Driller" : user?.role === "manager" ? `${user.warehouse_id} Manager` : "Admin · all warehouses"}</Label>
@@ -71,43 +72,43 @@ export default function Home() {
         )}
 
         <View style={[s.grid, desktop && { gap: spacing.lg }]}>
-          <Tile desktop={desktop} testID="quick-scan-bin" icon="qrcode-scan" label="Scan bin" primary onPress={() => router.push("/scan")} />
-          <Tile desktop={desktop} testID="quick-search-stock" icon="magnify" label="Search stock" onPress={() => router.push("/(tabs)/stock")} />
-          <Tile desktop={desktop} testID="quick-equipment" icon="tools" label="Equipment" onPress={() => router.push("/(tabs)/equipment")} />
-          {staff && <Tile desktop={desktop} testID="quick-purchase-orders" icon="clipboard-list-outline" label="Purchase orders" onPress={() => router.push("/(tabs)/orders")} />}
+          <Tile desktop={desktop} testID="quick-scan-bin" icon="qrcode-scan" label="Scan bin" primary onPress={() => router.push(PATH.SCAN)} />
+          <Tile desktop={desktop} testID="quick-search-stock" icon="magnify" label="Search stock" onPress={() => router.push(PATH.TABS_STOCK)} />
+          <Tile desktop={desktop} testID="quick-equipment" icon="tools" label="Equipment" onPress={() => router.push(PATH.TABS_EQUIPMENT)} />
+          {staff && <Tile desktop={desktop} testID="quick-purchase-orders" icon="clipboard-list-outline" label="Purchase orders" onPress={() => router.push(PATH.TABS_ORDERS)} />}
           {staff ? (
-            <Tile desktop={desktop} testID="quick-counts" icon="clipboard-check-outline" label="Counts" onPress={() => router.push("/counts")} />
+            <Tile desktop={desktop} testID="quick-counts" icon="clipboard-check-outline" label="Counts" onPress={() => router.push(PATH.COUNTS)} />
           ) : (
-            <Tile desktop={desktop} testID="quick-my-requests" icon="clipboard-list-outline" label="My requests" onPress={() => router.push("/requests")} />
+            <Tile desktop={desktop} testID="quick-my-requests" icon="clipboard-list-outline" label="My requests" onPress={() => router.push(PATH.REQUESTS)} />
           )}
-          <Tile desktop={desktop} testID="quick-trips" icon="calendar-month" label="Trips" onPress={() => router.push("/trips")} />
-          <Tile desktop={desktop} testID="quick-history" icon="timeline-text-outline" label="Stock history" onPress={() => router.push("/history")} />
+          <Tile desktop={desktop} testID="quick-trips" icon="calendar-month" label="Trips" onPress={() => router.push(PATH.TRIPS)} />
+          <Tile desktop={desktop} testID="quick-history" icon="timeline-text-outline" label="Stock history" onPress={() => router.push(PATH.HISTORY)} />
         </View>
 
         {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : d && (
           <>
             <View style={s.stats}>
-              <Pressable testID="stat-pending" style={[s.stat, { borderLeftColor: colors.warning }]} onPress={() => router.push("/requests")}>
+              <Pressable testID="stat-pending" style={[s.stat, { borderLeftColor: colors.warning }]} onPress={() => router.push(PATH.REQUESTS)}>
                 <Body style={s.statNum}>{d.pending_requests}</Body><Label>{staff ? "To approve" : "Pending"}</Label>
               </Pressable>
-              <Pressable testID="stat-low-stock" style={[s.stat, { borderLeftColor: colors.error }]} onPress={() => router.push("/reports")}>
+              <Pressable testID="stat-low-stock" style={[s.stat, { borderLeftColor: colors.error }]} onPress={() => router.push(PATH.REPORTS)}>
                 <Body style={s.statNum}>{d.low_stock_count}</Body><Label>Low stock</Label>
               </Pressable>
-              <Pressable testID="stat-overdue" style={[s.stat, { borderLeftColor: d.equipment_overdue ? colors.error : colors.success }]} onPress={() => router.push({ pathname: "/(tabs)/equipment", params: { filter: "overdue" } })}>
+              <Pressable testID="stat-overdue" style={[s.stat, { borderLeftColor: d.equipment_overdue ? colors.error : colors.success }]} onPress={() => router.push({ pathname: PATH.TABS_EQUIPMENT, params: { filter: "overdue" } })}>
                 <Body style={s.statNum}>{d.equipment_overdue}</Body><Label>Overdue</Label>
               </Pressable>
             </View>
 
             {staff && d.pending_requests > 0 && (
               <View style={{ paddingHorizontal: spacing.lg }}>
-                <Button testID="dashboard-review-approvals" title={`Review ${d.pending_requests} request${d.pending_requests > 1 ? "s" : ""}`} icon="gavel" onPress={() => router.push("/requests")} />
+                <Button testID="dashboard-review-approvals" title={`Review ${d.pending_requests} request${d.pending_requests > 1 ? "s" : ""}`} icon="gavel" onPress={() => router.push(PATH.REQUESTS)} />
               </View>
             )}
 
             <View style={s.section}>
               <Row style={{ justifyContent: "space-between" }}>
                 <H3>Low-stock alerts</H3>
-                <Pressable testID="dashboard-see-low-stock" onPress={() => router.push("/reports")} hitSlop={10}><Label style={{ color: colors.brandPrimary }}>See all</Label></Pressable>
+                <Pressable testID="dashboard-see-low-stock" onPress={() => router.push(PATH.REPORTS)} hitSlop={10}><Label style={{ color: colors.brandPrimary }}>See all</Label></Pressable>
               </Row>
               <Card>
                 {d.low_stock.length === 0 ? (
@@ -154,5 +155,5 @@ export default function Home() {
         )}
       </ScrollView>
     </View>
-  );
+  )
 }

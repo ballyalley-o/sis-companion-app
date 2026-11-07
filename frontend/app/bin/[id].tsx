@@ -1,42 +1,43 @@
-import { useEffect } from "react";
-import { ScrollView, useWindowDimensions, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { isStaff, useAuth } from "@/src/auth";
-import { BinLabel } from "@/src/BinLabel";
-import { useApi } from "@/src/hooks";
-import { printLabels } from "@/src/label";
-import { locateBin } from "@/src/warehouseMap";
-import { Body, Button, Card, EmptyState, ErrorState, Header, H3, Label, Loading, Mono, Row, useToast } from "@/src/ui";
-import { makeStyles, spacing, useTheme } from "@/src/theme";
+import { PATH } from 'route/path'
+import { useEffect } from "react"
+import { ScrollView, useWindowDimensions, View } from "react-native"
+import { useLocalSearchParams, useRouter } from "expo-router"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { isStaff, useAuth } from "state/auth"
+import { BinLabel } from "component/bin-label"
+import { useApi } from "lib/hooks"
+import { printLabels } from "lib/tool/label"
+import { locateBin } from "lib/tool/warehouse-map"
+import { Body, Button, Card, EmptyState, ErrorState, Header, H3, Label, Loading, Mono, Row, useToast } from "component/ui"
+import { makeStyles, spacing, useTheme } from "design/theme"
 
 const useStyles = makeStyles((c) => ({
   root: { flex: 1, backgroundColor: c.surface },
-}));
+}))
 
 export default function BinDetail() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const desktop = width >= 1000;
-  const router = useRouter();
-  const toast = useToast();
-  const { user, ready } = useAuth();
-  const { id, view } = useLocalSearchParams<{ id: string; view?: string }>();
-  const readOnly = view === "1";
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const { width } = useWindowDimensions()
+  const desktop = width >= 1000
+  const router = useRouter()
+  const toast = useToast()
+  const { user, ready } = useAuth()
+  const { id, view } = useLocalSearchParams<{ id: string; view?: string }>()
+  const readOnly = view === "1"
   useEffect(() => {
     if (ready && !user) {
-      router.replace({ pathname: "/login", params: { returnTo: `/bin/${id}?view=1` } });
+      router.replace({ pathname: PATH.LOGIN, params: { returnTo: `/bin/${id}?view=1` } })
     }
-  }, [id, ready, router, user]);
-  const q = useApi<any>(`/bins/${id}`);
-  const qr = useApi<any>(q.data ? `/qr?payload=${encodeURIComponent(q.data.qr_payload)}` : null);
-  const b = q.data;
-  const location = locateBin(b?.code);
+  }, [id, ready, router, user])
+  const q = useApi<any>(`/bins/${id}`)
+  const qr = useApi<any>(q.data ? `/qr?payload=${encodeURIComponent(q.data.qr_payload)}` : null)
+  const b = q.data
+  const location = locateBin(b?.code)
 
   const go = (type: "take" | "return", product_id: string) =>
-    router.push({ pathname: "/request/new", params: { type, wh: b.warehouse_id, bin_id: b.id, product_id } });
+    router.push({ pathname: PATH.REQUEST_NEW, params: { type, wh: b.warehouse_id, bin_id: b.id, product_id } })
 
   return (
     <View style={s.root} testID="bin-detail-screen">
@@ -63,7 +64,7 @@ export default function BinDetail() {
                 <Button testID="bin-print-label" title="Print label" icon="printer" variant="secondary" style={{ flex: 1, minWidth: 150 }} disabled={!qr.data}
                   onPress={() => qr.data && printLabels([{ code: b.code, title: b.title, data_uri: qr.data.data_uri }]).catch(e => toast(e.message, "error"))} />
                 <Button testID="bin-receive" title="Receive" icon="truck-check" variant="success" style={{ flex: 1, minWidth: 130 }}
-                  onPress={() => router.push({ pathname: "/receive", params: { wh: b.warehouse_id, bin_id: b.id } })} />
+                  onPress={() => router.push({ pathname: PATH.RECEIVE, params: { wh: b.warehouse_id, bin_id: b.id } })} />
               </Row>}
             </View>
             <Card style={{ flex: desktop ? 1 : undefined, width: desktop ? undefined : "100%", minWidth: 0, gap: spacing.md }}>
@@ -93,5 +94,5 @@ export default function BinDetail() {
         </ScrollView>
       )}
     </View>
-  );
+  )
 }

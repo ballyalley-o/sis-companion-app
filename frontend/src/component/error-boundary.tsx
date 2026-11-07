@@ -2,49 +2,49 @@
 // shows a reload screen instead of a blank app; the error is also logged so
 // it shows up in the Metro output. Do not mount additional boundaries.
 
-import { reloadAppAsync } from "expo";
-import { Component, type ErrorInfo, type PropsWithChildren, useState } from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { reloadAppAsync } from "expo"
+import { Component, type ErrorInfo, type PropsWithChildren, useState } from "react"
+import { Platform, Pressable, ScrollView, Text, View } from "react-native"
 
-import { makeStyles } from "@/src/theme";
+import { makeStyles } from "design/theme"
 
-type ErrorBoundaryState = { error: Error | null };
+type ErrorBoundaryState = { error: Error | null }
 
 export class ErrorBoundary extends Component<PropsWithChildren, ErrorBoundaryState> {
   state: ErrorBoundaryState = { error: null };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { error };
+    return { error }
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error("[ErrorBoundary] render crash:", error, info.componentStack ?? "");
+    console.error("[ErrorBoundary] render crash:", error, info.componentStack ?? "")
   }
 
   resetError = (): void => {
-    this.setState({ error: null });
+    this.setState({ error: null })
   };
 
   render() {
     if (this.state.error) {
-      return <ErrorFallback error={this.state.error} resetError={this.resetError} />;
+      return <ErrorFallback error={this.state.error} resetError={this.resetError} />
     }
-    return this.props.children;
+    return this.props.children
   }
 }
 
 function ErrorFallback({ error, resetError }: { error: Error; resetError: () => void }) {
-  const styles = useStyles();
-  const [showDetails, setShowDetails] = useState(false);
+  const styles = useStyles()
+  const [showDetails, setShowDetails] = useState(false)
 
   const handleReload = async () => {
     try {
-      await reloadAppAsync();
+      await reloadAppAsync()
     } catch {
       // Reload is unavailable in some environments; retry the render instead.
-      resetError();
+      resetError()
     }
-  };
+  }
 
   return (
     <View style={styles.container} testID="error-fallback">
@@ -74,7 +74,7 @@ function ErrorFallback({ error, resetError }: { error: Error; resetError: () => 
         </ScrollView>
       ) : null}
     </View>
-  );
+  )
 }
 
 const useStyles = makeStyles((colors) => ({
@@ -144,4 +144,4 @@ const useStyles = makeStyles((colors) => ({
     lineHeight: 18,
     fontFamily: Platform.select({ ios: "Menlo", default: "monospace" }),
   },
-}));
+}))

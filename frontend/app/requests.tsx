@@ -1,33 +1,34 @@
-import { useState } from "react";
-import { FlatList, RefreshControl, View } from "react-native";
-import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useDecision } from "@/src/decision";
-import { isStaff, useAuth } from "@/src/auth";
-import { fmtDate, useApi } from "@/src/hooks";
-import { Body, Button, Card, ChipRow, EmptyState, ErrorState, Header, IconButton, Label, Loading, Mono, Row, StatusPill } from "@/src/ui";
-import { makeStyles, spacing, useTheme } from "@/src/theme";
+import { PATH } from 'route/path'
+import { useState } from "react"
+import { FlatList, RefreshControl, View } from "react-native"
+import { useRouter } from "expo-router"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useDecision } from "component/decision"
+import { isStaff, useAuth } from "state/auth"
+import { fmtDate, useApi } from "lib/hooks"
+import { Body, Button, Card, ChipRow, EmptyState, ErrorState, Header, IconButton, Label, Loading, Mono, Row, StatusPill } from "component/ui"
+import { makeStyles, spacing, useTheme } from "design/theme"
 
 const useStyles = makeStyles((c) => ({
   root: { flex: 1, backgroundColor: c.surface },
   chips: { backgroundColor: c.surface, borderBottomWidth: 1, borderBottomColor: c.divider },
-}));
+}))
 
 export default function Requests() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const { user } = useAuth();
-  const staff = isStaff(user);
-  const [status, setStatus] = useState(staff ? "pending" : "all");
-  const res = useApi<any[]>(`/requests?status=${status}`);
-  const d = useDecision();
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const { user } = useAuth()
+  const staff = isStaff(user)
+  const [status, setStatus] = useState(staff ? "pending" : "all")
+  const res = useApi<any[]>(`/requests?status=${status}`)
+  const d = useDecision()
 
   return (
     <View style={s.root} testID="requests-screen">
       <Header title={staff ? "Approvals" : "My requests"} subtitle={user?.role === "manager" ? `${user.warehouse_id} warehouse` : staff ? "All warehouses" : "Take & return history"}
-        right={<IconButton testID="requests-new-button" icon="plus" onPress={() => router.push("/request/new")} />} />
+        right={<IconButton testID="requests-new-button" icon="plus" onPress={() => router.push(PATH.REQUEST_NEW)} />} />
       <View style={s.chips}>
         <ChipRow testIDPrefix="requests-filter" value={status} onChange={setStatus}
           options={[{ label: "Pending", value: "pending" }, { label: "Approved", value: "approved" }, { label: "Rejected", value: "rejected" }, { label: "All", value: "all" }]} />
@@ -40,7 +41,7 @@ export default function Requests() {
           refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={res.isRefetching} onRefresh={res.refetch} />}
           ListEmptyComponent={<EmptyState title={status === "pending" ? "Queue is clear" : "No requests"} text={status === "pending" ? "No pending approvals." : undefined} />}
           renderItem={({ item: r }) => (
-            <Card testID={`request-card-${r.number}`} onPress={() => router.push({ pathname: "/request/[id]", params: { id: r.id } })} style={{ gap: spacing.md }}>
+            <Card testID={`request-card-${r.number}`} onPress={() => router.push({ pathname: PATH.REQUEST_DETAIL, params: { id: r.id } })} style={{ gap: spacing.md }}>
               <Row style={{ justifyContent: "space-between" }}>
                 <Mono>{r.number}</Mono>
                 <Row style={{ gap: spacing.sm }}>
@@ -70,5 +71,5 @@ export default function Requests() {
       )}
       {d.sheet}
     </View>
-  );
+  )
 }

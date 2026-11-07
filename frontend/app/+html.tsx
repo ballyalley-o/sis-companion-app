@@ -1,6 +1,7 @@
+import { PATH } from 'route/path'
 // @ts-nocheck
-import { ScrollViewStyleReset } from "expo-router/html";
-import type { PropsWithChildren } from "react";
+import { ScrollViewStyleReset } from "expo-router/html"
+import type { PropsWithChildren } from "react"
 
 export default function Root({ children }: PropsWithChildren) {
   return (
@@ -13,7 +14,7 @@ export default function Root({ children }: PropsWithChildren) {
           content="width=device-width, initial-scale=1, shrink-to-fit=no"
         />
         <meta name="theme-color" content="#1C2228" />
-        <link rel="manifest" href="/manifest.json" />
+        <link rel="manifest" href={PATH.MANIFEST_JSON} />
         <script src="https://accounts.google.com/gsi/client" async defer />
         {/*
           Disable body scrolling on web to make ScrollView components work correctly.
@@ -48,5 +49,5 @@ export default function Root({ children }: PropsWithChildren) {
         {children}
       </body>
     </html>
-  );
+  )
 }

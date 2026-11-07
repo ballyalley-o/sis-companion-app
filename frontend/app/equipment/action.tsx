@@ -1,23 +1,23 @@
-import { useMemo, useState } from "react";
-import { Linking, Pressable, View } from "react-native";
-import { Image } from "expo-image";
-import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api, uploadPhoto } from "@/src/api";
-import { EquipmentSignature, hasInk, type Signature } from "@/src/EquipmentSignature";
-import { useAuth } from "@/src/auth";
-import { useApi } from "@/src/hooks";
-import { Body, Button, ChipRow, Field, H3, Header, Icon, Label, Loading, Row, Sheet, useToast } from "@/src/ui";
-import { makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { useMemo, useState } from "react"
+import { Linking, Pressable, View } from "react-native"
+import { Image } from "expo-image"
+import * as ImagePicker from "expo-image-picker"
+import { useLocalSearchParams, useRouter } from "expo-router"
+import { useQueryClient } from "@tanstack/react-query"
+import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { api, uploadPhoto } from "lib/api"
+import { EquipmentSignature, hasInk, type Signature } from "component/equipment-signature"
+import { useAuth } from "state/auth"
+import { useApi } from "lib/hooks"
+import { Body, Button, ChipRow, Field, H3, Header, Icon, Label, Loading, Row, Sheet, useToast } from "component/ui"
+import { makeStyles, radius, spacing, useTheme } from "design/theme"
 
 const CONDITIONS = [
   { value: "good", label: "Good", icon: "thumb-up" as const },
   { value: "fair", label: "Fair", icon: "alert" as const },
   { value: "damaged", label: "Damaged", icon: "hammer-wrench" as const },
-];
+]
 
 const useStyles = makeStyles((c) => ({
   root: { flex: 1, backgroundColor: c.surface },
@@ -25,79 +25,79 @@ const useStyles = makeStyles((c) => ({
   photo: { width: 88, height: 88, borderRadius: radius.sm },
   addPhoto: { width: 88, height: 88, borderRadius: radius.sm, borderWidth: 2, borderStyle: "dashed", borderColor: c.borderStrong, alignItems: "center", justifyContent: "center" },
   footer: { backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.divider, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-}));
+}))
 
 export default function EquipmentAction() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const toast = useToast();
-  const qc = useQueryClient();
-  const { user } = useAuth();
-  const { id, mode } = useLocalSearchParams<{ id: string; mode: "checkout" | "return" }>();
-  const eq = useApi<any>(`/equipment/${id}`);
-  const drillers = useApi<any[]>("/drillers");
-  const rigs = useApi<any[]>("/rigs");
-  const [driller, setDriller] = useState(user?.role === "driller" ? user.name : "");
-  const [rig, setRig] = useState("");
-  const [cond, setCond] = useState("good");
-  const [notes, setNotes] = useState("");
-  const [signature, setSignature] = useState<Signature>([]);
-  const [days, setDays] = useState("7");
-  const [photos, setPhotos] = useState<{ uri: string; path?: string }[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [permSheet, setPermSheet] = useState<null | "ask" | "settings">(null);
-  const checkout = mode === "checkout";
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const toast = useToast()
+  const qc = useQueryClient()
+  const { user } = useAuth()
+  const { id, mode } = useLocalSearchParams<{ id: string; mode: "checkout" | "return" }>()
+  const eq = useApi<any>(`/equipment/${id}`)
+  const drillers = useApi<any[]>("/drillers")
+  const rigs = useApi<any[]>("/rigs")
+  const [driller, setDriller] = useState(user?.role === "driller" ? user.name : "")
+  const [rig, setRig] = useState("")
+  const [cond, setCond] = useState("good")
+  const [notes, setNotes] = useState("")
+  const [signature, setSignature] = useState<Signature>([])
+  const [days, setDays] = useState("7")
+  const [photos, setPhotos] = useState<{ uri: string; path?: string }[]>([])
+  const [busy, setBusy] = useState(false)
+  const [permSheet, setPermSheet] = useState<null | "ask" | "settings">(null)
+  const checkout = mode === "checkout"
 
   const drillerOpts = useMemo(() => {
-    const names = (drillers.data || []).map((d) => d.name);
-    if (user && !names.includes(user.name)) names.unshift(user.name);
-    return names.map((n) => ({ label: n, value: n }));
-  }, [drillers.data, user]);
+    const names = (drillers.data || []).map((d) => d.name)
+    if (user && !names.includes(user.name)) names.unshift(user.name)
+    return names.map((n) => ({ label: n, value: n }))
+  }, [drillers.data, user])
 
   const addFrom = async (src: "camera" | "library") => {
-    setPermSheet(null);
+    setPermSheet(null)
     try {
       if (src === "camera") {
-        const cur = await ImagePicker.getCameraPermissionsAsync();
+        const cur = await ImagePicker.getCameraPermissionsAsync()
         if (!cur.granted) {
-          if (!cur.canAskAgain) return setPermSheet("settings");
-          const req = await ImagePicker.requestCameraPermissionsAsync();
-          if (!req.granted) return setPermSheet(req.canAskAgain ? null : "settings");
+          if (!cur.canAskAgain) return setPermSheet("settings")
+          const req = await ImagePicker.requestCameraPermissionsAsync()
+          if (!req.granted) return setPermSheet(req.canAskAgain ? null : "settings")
         }
       }
-      const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ["images"], quality: 0.5, allowsEditing: false };
-      const r = src === "camera" ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
-      if (!r.canceled && r.assets[0]) setPhotos((p) => [...p, { uri: r.assets[0].uri }].slice(0, 4));
+      const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ["images"], quality: 0.5, allowsEditing: false }
+      const r = src === "camera" ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts)
+      if (!r.canceled && r.assets[0]) setPhotos((p) => [...p, { uri: r.assets[0].uri }].slice(0, 4))
     } catch (e: any) {
-      toast(e.message || "Could not open camera", "error");
+      toast(e.message || "Could not open camera", "error")
     }
-  };
+  }
 
   const submit = async () => {
-    if (checkout && (!driller || !rig)) return toast("Select driller name and rig number", "error");
-    if (checkout && !hasInk(signature)) return toast("Ask the collector to sign before confirming", "error");
-    setBusy(true);
+    if (checkout && (!driller || !rig)) return toast("Select driller name and rig number", "error")
+    if (checkout && !hasInk(signature)) return toast("Ask the collector to sign before confirming", "error")
+    setBusy(true)
     try {
-      const paths: string[] = [];
-      for (const ph of photos) paths.push(ph.path || (await uploadPhoto(ph.uri)));
+      const paths: string[] = []
+      for (const ph of photos) paths.push(ph.path || (await uploadPhoto(ph.uri)))
       const body = checkout
         ? { collector_signature: signature, driller_name: driller, rig_number: rig, condition: cond, notes, photos: paths, due_days: Math.max(1, Math.min(90, parseInt(days, 10) || 7)) }
-        : { condition: cond, notes, photos: paths };
-      await api(`/equipment/${id}/${checkout ? "checkout" : "return"}`, { method: "POST", body });
-      qc.invalidateQueries();
-      toast(checkout ? "Equipment signed out" : "Equipment signed back in");
-      router.back();
+        : { condition: cond, notes, photos: paths }
+      await api(`/equipment/${id}/${checkout ? "checkout" : "return"}`, { method: "POST", body })
+      qc.invalidateQueries()
+      toast(checkout ? "Equipment signed out" : "Equipment signed back in")
+      router.back()
     } catch (e: any) {
-      toast(e.message, "error");
+      toast(e.message, "error")
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
-  };
+  }
 
-  if (eq.isLoading) return <View style={s.root}><Header title="Equipment" /><Loading /></View>;
-  const e = eq.data;
+  if (eq.isLoading) return <View style={s.root}><Header title="Equipment" /><Loading /></View>
+  const e = eq.data
 
   return (
     <View style={s.root} testID="equipment-action-screen">
@@ -107,7 +107,7 @@ export default function EquipmentAction() {
           <>
             <View style={{ gap: spacing.sm }}>
               <Label>Driller name</Label>
-              <View style={{ marginHorizontal: -spacing.lg }}><ChipRow testIDPrefix="equip-driller" value={driller} onChange={(name) => { setDriller(name); setSignature([]); }} options={drillerOpts} /></View>
+              <View style={{ marginHorizontal: -spacing.lg }}><ChipRow testIDPrefix="equip-driller" value={driller} onChange={(name) => { setDriller(name); setSignature([]) }} options={drillerOpts} /></View>
             </View>
             <View style={{ gap: spacing.sm }}>
               <Label>Rig number</Label>
@@ -127,15 +127,15 @@ export default function EquipmentAction() {
           <Label>Condition {checkout ? "at checkout" : "on return"}</Label>
           <Row>
             {CONDITIONS.map((c) => {
-              const on = cond === c.value;
-              const tone = c.value === "good" ? colors.success : c.value === "fair" ? colors.warning : colors.error;
+              const on = cond === c.value
+              const tone = c.value === "good" ? colors.success : c.value === "fair" ? colors.warning : colors.error
               return (
                 <Pressable key={c.value} testID={`equip-condition-${c.value}`} onPress={() => setCond(c.value)}
                   style={[s.cond, { borderColor: on ? tone : colors.border, backgroundColor: on ? tone : colors.surfaceSecondary }]}>
                   <Icon name={c.icon} size={26} color={on ? colors.onSuccess : colors.onSurface} />
                   <Body style={{ fontWeight: "800", color: on ? colors.onSuccess : colors.onSurface }}>{c.label}</Body>
                 </Pressable>
-              );
+              )
             })}
           </Row>
         </View>
@@ -171,7 +171,7 @@ export default function EquipmentAction() {
           <>
             <H3>Camera access is off</H3>
             <Body>Enable camera in Settings to photograph equipment condition. You can still choose from your library.</Body>
-            <Button testID="photo-open-settings" title="Open settings" icon="cog" onPress={() => { setPermSheet(null); Linking.openSettings(); }} />
+            <Button testID="photo-open-settings" title="Open settings" icon="cog" onPress={() => { setPermSheet(null); Linking.openSettings() }} />
             <Button testID="photo-library-fallback" title="Choose from library" variant="secondary" icon="image" onPress={() => addFrom("library")} />
           </>
         ) : (
@@ -184,5 +184,5 @@ export default function EquipmentAction() {
         )}
       </Sheet>
     </View>
-  );
+  )
 }

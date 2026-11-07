@@ -1,31 +1,32 @@
-import { useEffect, useState } from "react";
-import { FlatList, RefreshControl, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAuth } from "@/src/auth";
-import { fmtDate, useApi } from "@/src/hooks";
-import { usesNativeTabs } from "@/src/navigation";
-import { Body, Card, ChipRow, EmptyState, ErrorState, H1, IconButton, Label, Loading, Mono, Row, StatusPill } from "@/src/ui";
-import { makeStyles, spacing, useTheme } from "@/src/theme";
+import { PATH } from 'route/path'
+import { useEffect, useState } from "react"
+import { FlatList, RefreshControl, View } from "react-native"
+import { useLocalSearchParams, useRouter } from "expo-router"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useAuth } from "state/auth"
+import { fmtDate, useApi } from "lib/hooks"
+import { usesNativeTabs } from "config/navigation"
+import { Body, Card, ChipRow, EmptyState, ErrorState, H1, IconButton, Label, Loading, Mono, Row, StatusPill } from "component/ui"
+import { makeStyles, spacing, useTheme } from "design/theme"
 
-type F = "all" | "available" | "out" | "overdue" | "mine";
+type F = "all" | "available" | "out" | "overdue" | "mine"
 
 const useStyles = makeStyles((c) => ({
   root: { flex: 1, backgroundColor: c.surface },
   header: { backgroundColor: c.surface, borderBottomWidth: 1, borderBottomColor: c.divider, gap: spacing.xs },
-}));
+}))
 
 export default function Equipment() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const params = useLocalSearchParams<{ filter?: F }>();
-  const { user } = useAuth();
-  const [f, setF] = useState<F>(params.filter || "all");
-  useEffect(() => { if (params.filter) setF(params.filter); }, [params.filter]);
-  const res = useApi<any[]>(`/equipment${f !== "all" ? `?status=${f}` : ""}`);
-  const bottomChrome = usesNativeTabs ? insets.bottom : 0;
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const params = useLocalSearchParams<{ filter?: F }>()
+  const { user } = useAuth()
+  const [f, setF] = useState<F>(params.filter || "all")
+  useEffect(() => { if (params.filter) setF(params.filter) }, [params.filter])
+  const res = useApi<any[]>(`/equipment${f !== "all" ? `?status=${f}` : ""}`)
+  const bottomChrome = usesNativeTabs ? insets.bottom : 0
 
   return (
     <View style={s.root} testID="equipment-screen">
@@ -35,7 +36,7 @@ export default function Equipment() {
             <H1>Equipment</H1>
             <Label>Borrow & return register{user?.role === "manager" ? ` · ${user.warehouse_id}` : ""}</Label>
           </View>
-          <IconButton testID="equipment-scan-button" icon="qrcode-scan" onPress={() => router.push("/scan")} />
+          <IconButton testID="equipment-scan-button" icon="qrcode-scan" onPress={() => router.push(PATH.SCAN)} />
         </Row>
         <ChipRow testIDPrefix="equipment-filter" value={f} onChange={setF}
           options={[{ label: "All", value: "all" }, { label: "Available", value: "available" }, { label: "Signed out", value: "out" }, { label: "Overdue", value: "overdue" }, { label: "With me", value: "mine" }]} />
@@ -48,7 +49,7 @@ export default function Equipment() {
           refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={res.isRefetching} onRefresh={res.refetch} />}
           ListEmptyComponent={<EmptyState icon="toolbox-outline" title="Nothing here" text="No equipment matches this filter" />}
           renderItem={({ item: e }) => (
-            <Card testID={`equipment-card-${e.code}`} onPress={() => router.push({ pathname: "/equipment/[id]", params: { id: e.id } })}
+            <Card testID={`equipment-card-${e.code}`} onPress={() => router.push({ pathname: PATH.EQUIPMENT_DETAIL, params: { id: e.id } })}
               style={e.overdue ? { borderColor: colors.error, borderWidth: 2 } : undefined}>
               <Row style={{ alignItems: "flex-start" }}>
                 <View style={{ flex: 1, gap: 4 }}>
@@ -66,5 +67,5 @@ export default function Equipment() {
         />
       )}
     </View>
-  );
+  )
 }

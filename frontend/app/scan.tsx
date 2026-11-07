@@ -1,14 +1,15 @@
-import { useRef, useState } from "react";
-import { Linking, Platform, View } from "react-native";
-import { CameraView, useCameraPermissions } from "expo-camera";
-import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api } from "@/src/api";
-import { useAuth } from "@/src/auth";
-import { Body, Button, ChipRow, Field, H2, Header, Icon, Label, Loading, useToast } from "@/src/ui";
-import { makeStyles, radius, spacing, useTheme } from "@/src/theme";
+import { PATH } from 'route/path'
+import { useRef, useState } from "react"
+import { Linking, Platform, View } from "react-native"
+import { CameraView, useCameraPermissions } from "expo-camera"
+import * as Haptics from "expo-haptics"
+import { useRouter } from "expo-router"
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { api } from "lib/api"
+import { useAuth } from "state/auth"
+import { Body, Button, ChipRow, Field, H2, Header, Icon, Label, Loading, useToast } from "component/ui"
+import { makeStyles, radius, spacing, useTheme } from "design/theme"
 
 const useStyles = makeStyles((c) => ({
   root: { flex: 1, backgroundColor: c.surface },
@@ -16,41 +17,41 @@ const useStyles = makeStyles((c) => ({
   frame: { position: "absolute", top: "18%", left: "18%", right: "18%", bottom: "18%", borderWidth: 3, borderColor: c.brandPrimary, borderRadius: radius.md },
   panel: { margin: spacing.lg, padding: spacing.xl, borderRadius: radius.lg, backgroundColor: c.surfaceSecondary, gap: spacing.md, alignItems: "center", borderWidth: 1, borderColor: c.border },
   bottom: { paddingHorizontal: spacing.lg, gap: spacing.md },
-}));
+}))
 
 export default function Scan() {
-  const s = useStyles();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const { user } = useAuth();
-  const [warehouse, setWarehouse] = useState(user?.warehouse_id || "QLD");
-  const toast = useToast();
-  const [perm, requestPerm] = useCameraPermissions();
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [flash, setFlash] = useState<"ok" | "bad" | null>(null);
-  const lock = useRef(false);
+  const s = useStyles()
+  const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const { user } = useAuth()
+  const [warehouse, setWarehouse] = useState(user?.warehouse_id || "QLD")
+  const toast = useToast()
+  const [perm, requestPerm] = useCameraPermissions()
+  const [code, setCode] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [flash, setFlash] = useState<"ok" | "bad" | null>(null)
+  const lock = useRef(false)
 
   const resolve = async (payload: string) => {
-    if (lock.current || !payload.trim()) return;
-    lock.current = true;
-    setBusy(true);
+    if (lock.current || !payload.trim()) return
+    lock.current = true
+    setBusy(true)
     try {
-      const r = await api<{ type: string; id: string; code: string }>(`/scan/${encodeURIComponent(payload.trim())}?warehouse_id=${encodeURIComponent(warehouse)}`);
-      setFlash("ok");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      if (r.type === "bin") router.push({ pathname: "/bin/[id]", params: { id: r.id, view: "1" } });
-      else if (r.type === "equipment") router.push({ pathname: "/equipment/[id]", params: { id: r.id } });
-      else router.push({ pathname: "/product/[id]", params: { id: r.id } });
+      const r = await api<{ type: string; id: string; code: string }>(`/scan/${encodeURIComponent(payload.trim())}?warehouse_id=${encodeURIComponent(warehouse)}`)
+      setFlash("ok")
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
+      if (r.type === "bin") router.push({ pathname: PATH.BIN_DETAIL, params: { id: r.id, view: "1" } })
+      else if (r.type === "equipment") router.push({ pathname: PATH.EQUIPMENT_DETAIL, params: { id: r.id } })
+      else router.push({ pathname: PATH.PRODUCT_DETAIL, params: { id: r.id } })
     } catch (e: any) {
-      setFlash("bad");
-      toast(e.message, "error");
+      setFlash("bad")
+      toast(e.message, "error")
     } finally {
-      setBusy(false);
-      setTimeout(() => { lock.current = false; setFlash(null); }, 1500);
+      setBusy(false)
+      setTimeout(() => { lock.current = false; setFlash(null) }, 1500)
     }
-  };
+  }
 
   const camera = () => {
     if (Platform.OS === "web") {
@@ -59,9 +60,9 @@ export default function Scan() {
           <Icon name="cellphone" size={48} color={colors.brandPrimary} />
           <Body style={{ textAlign: "center" }}>Camera scanning runs on the phone app. Enter a bin, equipment ID or SKU below.</Body>
         </View>
-      );
+      )
     }
-    if (!perm) return <Loading text="Initializing camera…" />;
+    if (!perm) return <Loading text="Initializing camera…" />
     if (!perm.granted) {
       return (
         <View style={s.panel} testID="scan-permission-panel">
@@ -75,7 +76,7 @@ export default function Scan() {
           )}
           <Label>Or enter the code manually below</Label>
         </View>
-      );
+      )
     }
     return (
       <View style={[s.camWrap, flash === "ok" && { borderColor: colors.success }, flash === "bad" && { borderColor: colors.error }]} testID="scan-camera">
@@ -83,8 +84,8 @@ export default function Scan() {
           onBarcodeScanned={busy ? undefined : (r) => resolve(r.data)} />
         <View pointerEvents="none" style={s.frame} />
       </View>
-    );
-  };
+    )
+  }
 
   return (
     <View style={s.root} testID="scan-screen">
@@ -98,5 +99,5 @@ export default function Scan() {
         </View>
       </KeyboardAwareScrollView>
     </View>
-  );
+  )
 }
