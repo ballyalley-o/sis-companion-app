@@ -36,7 +36,7 @@ export default function Counts() {
       qc.invalidateQueries()
       setOpen(false)
       setSel([])
-      router.push({ pathname: PATH.COUNTS_DETAIL, params: { id: c.id } })
+      router.push({ pathname: PATH.COUNT_DETAIL, params: { id: c.id } })
     } catch (e: any) {
       toast(e.message, "error")
     } finally {
@@ -53,7 +53,7 @@ export default function Counts() {
           refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={q.refetch} />}
           ListEmptyComponent={<EmptyState icon="clipboard-check-outline" title="No counts yet" text="Start a cycle count on a few bins or a full stocktake" />}
           renderItem={({ item: c }) => (
-            <Card testID={`count-card-${c.number}`} onPress={() => router.push({ pathname: PATH.COUNTS_DETAIL, params: { id: c.id } })} style={{ gap: spacing.sm }}>
+            <Card testID={`count-card-${c.number}`} onPress={() => router.push({ pathname: PATH.COUNT_DETAIL, params: { id: c.id } })} style={{ gap: spacing.sm }}>
               <Row style={{ justifyContent: "space-between" }}>
                 <Mono>{c.number}</Mono>
                 <StatusPill status={c.status} />

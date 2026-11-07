@@ -101,7 +101,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="index" options={{ title: "Home", tabBarButtonTestID: "tab-home", tabBarIcon: ({ color }) => <Icon name="view-dashboard" size={26} color={color} /> }} />
       <Tabs.Screen name="stock" options={{ title: "Stock", tabBarButtonTestID: "tab-stock", tabBarIcon: ({ color }) => <Icon name="package-variant-closed" size={26} color={color} /> }} />
       <Tabs.Screen name="equipment" options={{ title: "Equipment", tabBarButtonTestID: "tab-equipment", tabBarIcon: ({ color }) => <Icon name="tools" size={26} color={color} /> }} />
-      <Tabs.Screen name="orders" options={{ title: "Orders", href: user?.role === "driller" ? null : "/(tabs)/orders", tabBarButtonTestID: "tab-orders", tabBarIcon: ({ color }) => <Icon name="clipboard-list-outline" size={26} color={color} /> }} />
+      <Tabs.Screen name="orders" options={{ title: "Orders", href: user?.role === "driller" ? null : PATH.TAB_ORDER, tabBarButtonTestID: "tab-orders", tabBarIcon: ({ color }) => <Icon name="clipboard-list-outline" size={26} color={color} /> }} />
       <Tabs.Screen name="more" options={{ title: "More", tabBarButtonTestID: "tab-more", tabBarIcon: ({ color }) => <Icon name="menu" size={26} color={color} /> }} />
     </Tabs>
   )

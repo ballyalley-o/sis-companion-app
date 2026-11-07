@@ -10,20 +10,20 @@ import { makeStyles, radius, spacing, useTheme } from "design/theme"
 type Item = { icon: IconName; label: string; sub: string; href: Href; roles: string[]; id: string }
 const ITEMS: Item[] = [
   { id: "warehouse-map", icon: "map-marker", label: "Warehouse map", sub: "Floor plan and product bin locations", href: PATH.WAREHOUSE_MAP, roles: ["driller", "manager", "admin"] },
-  { id: "trips", icon: "calendar-month", label: "Trip calendar", sub: "Plan trips & pre-order stock", href: PATH.TRIPS, roles: ["driller", "manager", "admin"] },
+  { id: "trips", icon: "calendar-month", label: "Trip calendar", sub: "Plan trips & pre-order stock", href: PATH.TRIP, roles: ["driller", "manager", "admin"] },
   { id: "history", icon: "timeline-text-outline", label: "Stock history", sub: "Trace every movement of an item", href: PATH.HISTORY, roles: ["driller", "manager", "admin"] },
-  { id: "reorders", icon: "cart-arrow-down", label: "Reorders", sub: "Purchase reorders for trips & low stock", href: PATH.REORDERS, roles: ["manager", "admin"] },
-  { id: "requests", icon: "gavel", label: "Stock requests", sub: "Approve / reject or track yours", href: PATH.REQUESTS, roles: ["driller", "manager", "admin"] },
+  { id: "reorders", icon: "cart-arrow-down", label: "Reorders", sub: "Purchase reorders for trips & low stock", href: PATH.REORDER, roles: ["manager", "admin"] },
+  { id: "requests", icon: "gavel", label: "Stock requests", sub: "Approve / reject or track yours", href: PATH.REQUEST, roles: ["driller", "manager", "admin"] },
   { id: "new-request", icon: "clipboard-plus-outline", label: "New stock request", sub: "Take or return stock", href: PATH.REQUEST_NEW, roles: ["driller", "manager", "admin"] },
   { id: "receive", icon: "truck-check", label: "Receive stock", sub: "Goods in from suppliers into bins", href: PATH.RECEIVE, roles: ["manager", "admin"] },
-  { id: "orders", icon: "clipboard-list-outline", label: "Zoho purchase orders", sub: "Scan order references and receive arrivals", href: PATH.ORDERS, roles: ["manager", "admin"] },
-  { id: "kits", icon: "package-variant-plus", label: "Rig kits", sub: "Standard item kits per rig", href: PATH.KITS, roles: ["manager", "admin"] },
-  { id: "notifications", icon: "bell-outline", label: "Notifications", sub: "Approvals, low stock, damage", href: PATH.NOTIFICATIONS, roles: ["driller", "manager", "admin"] },
-  { id: "counts", icon: "clipboard-check-outline", label: "Stocktake & cycle counts", sub: "Count bins, post variances", href: PATH.COUNTS, roles: ["manager", "admin"] },
-  { id: "bins", icon: "qrcode", label: "Bins & QR labels", sub: "Manage bins, print labels", href: PATH.BINS, roles: ["manager", "admin"] },
-  { id: "reports", icon: "chart-box-outline", label: "Reports", sub: "Low stock, discrepancies, movements, audit", href: PATH.REPORTS, roles: ["driller", "manager", "admin"] },
+  { id: "orders", icon: "clipboard-list-outline", label: "Zoho purchase orders", sub: "Scan order references and receive arrivals", href: PATH.ORDER, roles: ["manager", "admin"] },
+  { id: "kits", icon: "package-variant-plus", label: "Rig kits", sub: "Standard item kits per rig", href: PATH.KIT, roles: ["manager", "admin"] },
+  { id: "notifications", icon: "bell-outline", label: "Notifications", sub: "Approvals, low stock, damage", href: PATH.NOTIFICATION, roles: ["driller", "manager", "admin"] },
+  { id: "counts", icon: "clipboard-check-outline", label: "Stocktake & cycle counts", sub: "Count bins, post variances", href: PATH.COUNT, roles: ["manager", "admin"] },
+  { id: "bins", icon: "qrcode", label: "Bins & QR labels", sub: "Manage bins, print labels", href: PATH.BIN, roles: ["manager", "admin"] },
+  { id: "reports", icon: "chart-box-outline", label: "Reports", sub: "Low stock, discrepancies, movements, audit", href: PATH.REPORT, roles: ["driller", "manager", "admin"] },
   { id: "zoho", icon: "cloud-sync-outline", label: "Zoho integration", sub: "OAuth connection & settings", href: PATH.ZOHO, roles: ["admin"] },
-  { id: "users", icon: "account-group-outline", label: "Users & roles", sub: "Drillers, managers, admins", href: PATH.USERS, roles: ["admin"] },
+  { id: "users", icon: "account-group-outline", label: "Users & roles", sub: "Drillers, managers, admins", href: PATH.USER, roles: ["admin"] },
 ]
 
 const useStyles = makeStyles((c) => ({

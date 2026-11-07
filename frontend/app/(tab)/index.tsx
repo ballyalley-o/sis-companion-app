@@ -58,7 +58,7 @@ export default function Home() {
         <View style={[s.header, { paddingTop: insets.top + spacing.sm }]}>
           <View style={s.topRow}>
             <StatusPill status={d?.zoho_mode || "mock"} label={d?.zoho_mode === "live" ? "Zoho live" : "Zoho mock"} testID="dashboard-zoho-status" />
-            <IconButton testID="dashboard-notifications-button" icon="bell" badge={unread.data?.count} onPress={() => router.push(PATH.NOTIFICATIONS)} />
+            <IconButton testID="dashboard-notifications-button" icon="bell" badge={unread.data?.count} onPress={() => router.push(PATH.NOTIFICATION)} />
           </View>
           <View style={s.heading}>
             <Label>{user?.role === "driller" ? "Driller" : user?.role === "manager" ? `${user.warehouse_id} Manager` : "Admin · all warehouses"}</Label>
@@ -73,42 +73,42 @@ export default function Home() {
 
         <View style={[s.grid, desktop && { gap: spacing.lg }]}>
           <Tile desktop={desktop} testID="quick-scan-bin" icon="qrcode-scan" label="Scan bin" primary onPress={() => router.push(PATH.SCAN)} />
-          <Tile desktop={desktop} testID="quick-search-stock" icon="magnify" label="Search stock" onPress={() => router.push(PATH.TABS_STOCK)} />
-          <Tile desktop={desktop} testID="quick-equipment" icon="tools" label="Equipment" onPress={() => router.push(PATH.TABS_EQUIPMENT)} />
-          {staff && <Tile desktop={desktop} testID="quick-purchase-orders" icon="clipboard-list-outline" label="Purchase orders" onPress={() => router.push(PATH.TABS_ORDERS)} />}
+          <Tile desktop={desktop} testID="quick-search-stock" icon="magnify" label="Search stock" onPress={() => router.push(PATH.TAB_STOCK)} />
+          <Tile desktop={desktop} testID="quick-equipment" icon="tools" label="Equipment" onPress={() => router.push(PATH.TAB_EQUIPMENT)} />
+          {staff && <Tile desktop={desktop} testID="quick-purchase-orders" icon="clipboard-list-outline" label="Purchase orders" onPress={() => router.push(PATH.TAB_ORDER)} />}
           {staff ? (
-            <Tile desktop={desktop} testID="quick-counts" icon="clipboard-check-outline" label="Counts" onPress={() => router.push(PATH.COUNTS)} />
+            <Tile desktop={desktop} testID="quick-counts" icon="clipboard-check-outline" label="Counts" onPress={() => router.push(PATH.COUNT)} />
           ) : (
-            <Tile desktop={desktop} testID="quick-my-requests" icon="clipboard-list-outline" label="My requests" onPress={() => router.push(PATH.REQUESTS)} />
+            <Tile desktop={desktop} testID="quick-my-requests" icon="clipboard-list-outline" label="My requests" onPress={() => router.push(PATH.REQUEST)} />
           )}
-          <Tile desktop={desktop} testID="quick-trips" icon="calendar-month" label="Trips" onPress={() => router.push(PATH.TRIPS)} />
+          <Tile desktop={desktop} testID="quick-trips" icon="calendar-month" label="Trips" onPress={() => router.push(PATH.TRIP)} />
           <Tile desktop={desktop} testID="quick-history" icon="timeline-text-outline" label="Stock history" onPress={() => router.push(PATH.HISTORY)} />
         </View>
 
         {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : d && (
           <>
             <View style={s.stats}>
-              <Pressable testID="stat-pending" style={[s.stat, { borderLeftColor: colors.warning }]} onPress={() => router.push(PATH.REQUESTS)}>
+              <Pressable testID="stat-pending" style={[s.stat, { borderLeftColor: colors.warning }]} onPress={() => router.push(PATH.REQUEST)}>
                 <Body style={s.statNum}>{d.pending_requests}</Body><Label>{staff ? "To approve" : "Pending"}</Label>
               </Pressable>
-              <Pressable testID="stat-low-stock" style={[s.stat, { borderLeftColor: colors.error }]} onPress={() => router.push(PATH.REPORTS)}>
+              <Pressable testID="stat-low-stock" style={[s.stat, { borderLeftColor: colors.error }]} onPress={() => router.push(PATH.REPORT)}>
                 <Body style={s.statNum}>{d.low_stock_count}</Body><Label>Low stock</Label>
               </Pressable>
-              <Pressable testID="stat-overdue" style={[s.stat, { borderLeftColor: d.equipment_overdue ? colors.error : colors.success }]} onPress={() => router.push({ pathname: PATH.TABS_EQUIPMENT, params: { filter: "overdue" } })}>
+              <Pressable testID="stat-overdue" style={[s.stat, { borderLeftColor: d.equipment_overdue ? colors.error : colors.success }]} onPress={() => router.push({ pathname: PATH.TAB_EQUIPMENT, params: { filter: "overdue" } })}>
                 <Body style={s.statNum}>{d.equipment_overdue}</Body><Label>Overdue</Label>
               </Pressable>
             </View>
 
             {staff && d.pending_requests > 0 && (
               <View style={{ paddingHorizontal: spacing.lg }}>
-                <Button testID="dashboard-review-approvals" title={`Review ${d.pending_requests} request${d.pending_requests > 1 ? "s" : ""}`} icon="gavel" onPress={() => router.push(PATH.REQUESTS)} />
+                <Button testID="dashboard-review-approvals" title={`Review ${d.pending_requests} request${d.pending_requests > 1 ? "s" : ""}`} icon="gavel" onPress={() => router.push(PATH.REQUEST)} />
               </View>
             )}
 
             <View style={s.section}>
               <Row style={{ justifyContent: "space-between" }}>
                 <H3>Low-stock alerts</H3>
-                <Pressable testID="dashboard-see-low-stock" onPress={() => router.push(PATH.REPORTS)} hitSlop={10}><Label style={{ color: colors.brandPrimary }}>See all</Label></Pressable>
+                <Pressable testID="dashboard-see-low-stock" onPress={() => router.push(PATH.REPORT)} hitSlop={10}><Label style={{ color: colors.brandPrimary }}>See all</Label></Pressable>
               </Row>
               <Card>
                 {d.low_stock.length === 0 ? (

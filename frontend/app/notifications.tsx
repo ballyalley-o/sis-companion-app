@@ -32,10 +32,10 @@ export default function Notifications() {
   const open = (n: any) => {
     if (n.ref?.type === "request") router.push({ pathname: PATH.REQUEST_DETAIL, params: { id: n.ref.id } })
     else if (n.ref?.type === "equipment") router.push({ pathname: PATH.EQUIPMENT_DETAIL, params: { id: n.ref.id } })
-    else if (n.ref?.type === "count") router.push({ pathname: PATH.COUNTS_DETAIL, params: { id: n.ref.id } })
+    else if (n.ref?.type === "count") router.push({ pathname: PATH.COUNT_DETAIL, params: { id: n.ref.id } })
     else if (n.ref?.type === "product") router.push({ pathname: PATH.PRODUCT_DETAIL, params: { id: n.ref.id } })
-    else if (n.ref?.type === "trip") router.push({ pathname: PATH.TRIPS_DETAIL, params: { id: n.ref.id } })
-    else if (n.ref?.type === "reorder") router.push(PATH.REORDERS)
+    else if (n.ref?.type === "trip") router.push({ pathname: PATH.TRIP_DETAIL, params: { id: n.ref.id } })
+    else if (n.ref?.type === "reorder") router.push(PATH.REORDER)
   }
 
   return (

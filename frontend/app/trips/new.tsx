@@ -84,7 +84,7 @@ export default function TripForm() {
       const r = await api(p.id ? `/trips/${p.id}` : "/trips", { method: p.id ? "PUT" : "POST", body })
       qc.invalidateQueries()
       toast(p.id ? "Trip updated — sent for approval" : `Trip ${r.number} sent for approval`)
-      router.replace({ pathname: PATH.TRIPS_DETAIL, params: { id: r.id } })
+      router.replace({ pathname: PATH.TRIP_DETAIL, params: { id: r.id } })
     } catch (e: any) {
       toast(e.message, "error")
     } finally {

@@ -50,7 +50,7 @@ export default function TripsCalendar() {
   return (
     <View style={s.root} testID="trips-screen">
       <Header title="Trip calendar" subtitle={user?.role === "driller" ? "Your planned trips" : "Planned driller trips"}
-        right={<IconButton testID="trips-new-button" icon="plus" onPress={() => router.push({ pathname: PATH.TRIPS_NEW, params: { date: sel } })} />} />
+        right={<IconButton testID="trips-new-button" icon="plus" onPress={() => router.push({ pathname: PATH.TRIP_NEW, params: { date: sel } })} />} />
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}
         refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={q.refetch} />}>
         <ChipRow testIDPrefix="trips-filter" value={status} onChange={setStatus}
@@ -83,7 +83,7 @@ export default function TripsCalendar() {
           {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : dayTrips.length === 0 ? (
             <EmptyState icon="calendar-blank" title="No trips this day" text="Tap + to plan a trip and list the stock you need" />
           ) : dayTrips.map((t) => (
-            <Card key={t.id} testID={`trip-card-${t.number}`} onPress={() => router.push({ pathname: PATH.TRIPS_DETAIL, params: { id: t.id } })}
+            <Card key={t.id} testID={`trip-card-${t.number}`} onPress={() => router.push({ pathname: PATH.TRIP_DETAIL, params: { id: t.id } })}
               style={{ gap: 4, borderLeftWidth: 4, borderLeftColor: tone(colors, t.status) }}>
               <Row style={{ justifyContent: "space-between" }}>
                 <Mono>{t.number}</Mono>

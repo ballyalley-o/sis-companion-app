@@ -63,7 +63,7 @@ export default function Reorders() {
                   <Button testID={`reorder-cancel-${r.number}`} title="Cancel" variant="danger" style={{ flex: 1 }} onPress={() => setSt(r, "cancelled")} />
                 </Row>
               )}
-              {r.trip_id && <Button testID={`reorder-trip-${r.number}`} title="View trip" variant="ghost" icon="calendar" onPress={() => router.push({ pathname: PATH.TRIPS_DETAIL, params: { id: r.trip_id } })} />}
+              {r.trip_id && <Button testID={`reorder-trip-${r.number}`} title="View trip" variant="ghost" icon="calendar" onPress={() => router.push({ pathname: PATH.TRIP_DETAIL, params: { id: r.trip_id } })} />}
             </Card>
           )} />
       )}

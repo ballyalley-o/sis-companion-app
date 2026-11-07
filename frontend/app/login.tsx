@@ -45,7 +45,7 @@ export default function Login() {
   const toast = useToast()
   const router = useRouter()
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>()
-  const destination = returnTo?.startsWith("/bin/") && !returnTo.startsWith("//") ? returnTo : PATH.TABS
+  const destination = returnTo?.startsWith("/bin/") && !returnTo.startsWith("//") ? returnTo : PATH.TAB
   const [email, setEmail] = useState("")
   const [pw, setPw] = useState("")
   const [show, setShow] = useState(false)

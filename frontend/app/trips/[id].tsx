@@ -47,7 +47,7 @@ export default function TripDetail() {
     <View style={s.root} testID="trip-detail-screen">
       <Header title={t?.number || "Trip"} subtitle={t ? `${t.start_date} → ${t.end_date} · ${t.warehouse_id}` : undefined}
         right={t && ["pending", "rejected"].includes(t.status) && (staff || t.driller_id === user?.id)
-          ? <IconButton testID="trip-edit-button" icon="pencil" onPress={() => router.push({ pathname: PATH.TRIPS_NEW, params: { id: t.id } })} /> : undefined} />
+          ? <IconButton testID="trip-edit-button" icon="pencil" onPress={() => router.push({ pathname: PATH.TRIP_NEW, params: { id: t.id } })} /> : undefined} />
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : t && (
         <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: insets.bottom + spacing.xl }}>
           <Card style={{ gap: spacing.sm }}>
@@ -87,7 +87,7 @@ export default function TripDetail() {
                   <StatusPill status={r.status === "open" ? "pending" : r.status === "ordered" ? "processing" : r.status === "received" ? "approved" : "cancelled"} label={r.status} />
                 </Row>
               ))}
-              {staff && <Button testID="trip-open-reorders" title="Manage reorders" variant="ghost" icon="cart-arrow-right" onPress={() => router.push(PATH.REORDERS)} />}
+              {staff && <Button testID="trip-open-reorders" title="Manage reorders" variant="ghost" icon="cart-arrow-right" onPress={() => router.push(PATH.REORDER)} />}
             </Card>
           )}
 

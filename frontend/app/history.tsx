@@ -40,7 +40,7 @@ export default function StockHistory() {
   const openRef = (ref: any) => {
     if (!ref) return
     if (ref.type === "request") router.push({ pathname: PATH.REQUEST_DETAIL, params: { id: ref.id } })
-    else if (ref.type === "count") router.push({ pathname: PATH.COUNTS_DETAIL, params: { id: ref.id } })
+    else if (ref.type === "count") router.push({ pathname: PATH.COUNT_DETAIL, params: { id: ref.id } })
   }
 
   return (
@@ -86,7 +86,7 @@ export default function StockHistory() {
               <Card style={{ gap: spacing.sm }} testID="history-upcoming">
                 <Label>Upcoming</Label>
                 {d.reservations.map((r: any) => (
-                  <Pressable key={r.trip_id} testID={`history-trip-${r.number}`} onPress={() => router.push({ pathname: PATH.TRIPS_DETAIL, params: { id: r.trip_id } })}>
+                  <Pressable key={r.trip_id} testID={`history-trip-${r.number}`} onPress={() => router.push({ pathname: PATH.TRIP_DETAIL, params: { id: r.trip_id } })}>
                     <Row style={{ justifyContent: "space-between" }}>
                       <Body style={{ flex: 1, color: colors.onSurface }}>Trip {r.number} · {r.start_date} · {r.driller_name} {r.rig_number}</Body>
                       <StatusPill status={r.status} label={`−${r.qty}`} />

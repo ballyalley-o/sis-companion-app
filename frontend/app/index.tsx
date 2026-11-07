@@ -9,5 +9,5 @@ export default function Index() {
   const { user, ready } = useAuth()
   const { colors } = useTheme()
   if (!ready) return <View style={{ flex: 1, backgroundColor: colors.surface }}><Loading text="Starting up…" /></View>
-  return <Redirect href={user ? PATH.TABS : PATH.LOGIN} />
+  return <Redirect href={user ? PATH.TAB : PATH.LOGIN} />
 }
