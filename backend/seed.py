@@ -1,7 +1,7 @@
 """Idempotent demo seed: only inserts when collections are empty / users missing."""
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import bcrypt
 
@@ -28,12 +28,43 @@ PRODUCTS = [
     ("PPE-GLV-L", "Impact Gloves L", "Hi-vis impact resistant gloves, large", "pair", 24),
     ("FLT-HYD-01", "Hydraulic Filter", "Rig hydraulic return filter element", "ea", 6),
 ]
-EQUIPMENT = [
+LEGACY_DEMO_EQUIPMENT = [
     ("EQ-1001", "Generator 20kVA", "Power"), ("EQ-1002", "Mud Mixer Pump", "Pumps"),
     ("EQ-1003", "Core Orientation Tool", "Survey"), ("EQ-1004", "Downhole Survey Camera", "Survey"),
     ("EQ-1005", "Hydraulic Torque Wrench", "Tools"), ("EQ-1006", "Water Pump 3in", "Pumps"),
     ("EQ-2001", "Lighting Tower", "Power"), ("EQ-2002", "Rod Handler", "Tools"),
 ]
+
+
+DEMO_EQUIPMENT = [
+    (f"SL-{i:03d}", "Starlink Kit", "Connectivity", "QLD" if i <= 4 else "NSW")
+    for i in range(1, 9)
+] + [
+    ("COMP-001", "Sullair 375HH Towable Air Compressor", "Compressors", "QLD"),
+    ("COMP-002", "Sullair 375HH Towable Air Compressor", "Compressors", "QLD"),
+    ("REEL-001", "Reel Trailer", "Trailers", "QLD"),
+]
+
+
+async def seed_equipment(db):
+    for code, name, category, warehouse in DEMO_EQUIPMENT:
+        await db.equipment.update_one({"code": code}, {"$setOnInsert": {
+            "id": nid(), "code": code, "name": name, "category": category,
+            "warehouse_id": warehouse, "status": "available", "notes": "",
+            "current_loan_id": None,
+        }}, upsert=True)
+        await db.equipment.update_one(
+            {"code": code, "name": name, "serial_number": {"$exists": False}},
+            {"$set": {"serial_number": f"DEMO-{code}"}},
+        )
+
+    # Retire only exact legacy seed entries. Keep their loan records intact.
+    for code, name, category in LEGACY_DEMO_EQUIPMENT:
+        warehouse = "QLD" if code.startswith("EQ-1") else "NSW"
+        await db.equipment.update_one(
+            {"code": code, "name": name, "category": category, "warehouse_id": warehouse},
+            {"$set": {"archived": True}},
+        )
 
 
 async def seed(db):
@@ -80,19 +111,4 @@ async def seed(db):
                 stock.append({"id": nid(), "product_id": p["id"], "warehouse_id": wh, "bin_id": b["id"], "qty": qty})
         await db.stock.insert_many(stock)
 
-    if await db.equipment.count_documents({}) == 0:
-        await db.equipment.insert_many([
-            {"id": nid(), "code": c, "name": n, "category": cat, "warehouse_id": "QLD" if c.startswith("EQ-1") else "NSW",
-             "status": "available", "notes": "", "current_loan_id": None}
-            for c, n, cat in EQUIPMENT])
-        # One overdue demo loan
-        eq = await db.equipment.find_one({"code": "EQ-1003"})
-        jake = await db.users.find_one({"email": "jake@drillstock.com"})
-        loan_id = nid()
-        await db.equipment_loans.insert_one({
-            "id": loan_id, "equipment_id": eq["id"], "equipment_code": eq["code"], "equipment_name": eq["name"],
-            "warehouse_id": eq["warehouse_id"], "driller_id": jake["id"], "driller_name": jake["name"], "rig_number": "RIG-03",
-            "checkout_at": (now - timedelta(days=5)).isoformat(), "due_at": (now - timedelta(days=1)).isoformat(),
-            "checkout_condition": "good", "checkout_notes": "Calibrated before dispatch", "checkout_photos": [],
-            "return_at": None, "return_condition": None, "return_notes": None, "return_photos": [], "status": "out"})
-        await db.equipment.update_one({"id": eq["id"]}, {"$set": {"status": "checked_out", "current_loan_id": loan_id}})
+    await seed_equipment(db)

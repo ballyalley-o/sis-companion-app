@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, uploadPhoto } from "@/src/api";
+import { EquipmentSignature, hasInk, type Signature } from "@/src/EquipmentSignature";
 import { useAuth } from "@/src/auth";
 import { useApi } from "@/src/hooks";
 import { Body, Button, ChipRow, Field, H3, Header, Icon, Label, Loading, Row, Sheet, useToast } from "@/src/ui";
@@ -42,6 +43,7 @@ export default function EquipmentAction() {
   const [rig, setRig] = useState("");
   const [cond, setCond] = useState("good");
   const [notes, setNotes] = useState("");
+  const [signature, setSignature] = useState<Signature>([]);
   const [days, setDays] = useState("7");
   const [photos, setPhotos] = useState<{ uri: string; path?: string }[]>([]);
   const [busy, setBusy] = useState(false);
@@ -75,12 +77,13 @@ export default function EquipmentAction() {
 
   const submit = async () => {
     if (checkout && (!driller || !rig)) return toast("Select driller name and rig number", "error");
+    if (checkout && !hasInk(signature)) return toast("Ask the collector to sign before confirming", "error");
     setBusy(true);
     try {
       const paths: string[] = [];
       for (const ph of photos) paths.push(ph.path || (await uploadPhoto(ph.uri)));
       const body = checkout
-        ? { driller_name: driller, rig_number: rig, condition: cond, notes, photos: paths, due_days: Math.max(1, Math.min(90, parseInt(days, 10) || 7)) }
+        ? { collector_signature: signature, driller_name: driller, rig_number: rig, condition: cond, notes, photos: paths, due_days: Math.max(1, Math.min(90, parseInt(days, 10) || 7)) }
         : { condition: cond, notes, photos: paths };
       await api(`/equipment/${id}/${checkout ? "checkout" : "return"}`, { method: "POST", body });
       qc.invalidateQueries();
@@ -104,7 +107,7 @@ export default function EquipmentAction() {
           <>
             <View style={{ gap: spacing.sm }}>
               <Label>Driller name</Label>
-              <View style={{ marginHorizontal: -spacing.lg }}><ChipRow testIDPrefix="equip-driller" value={driller} onChange={setDriller} options={drillerOpts} /></View>
+              <View style={{ marginHorizontal: -spacing.lg }}><ChipRow testIDPrefix="equip-driller" value={driller} onChange={(name) => { setDriller(name); setSignature([]); }} options={drillerOpts} /></View>
             </View>
             <View style={{ gap: spacing.sm }}>
               <Label>Rig number</Label>
@@ -155,6 +158,7 @@ export default function EquipmentAction() {
           </Row>
           {photos.length > 0 && <Label>Tap a photo to remove it</Label>}
         </View>
+        {checkout && <EquipmentSignature value={signature} onChange={setSignature} />}
       </KeyboardAwareScrollView>
       <KeyboardStickyView offset={{ opened: insets.bottom }}>
         <View style={[s.footer, { paddingBottom: insets.bottom + spacing.md }]}>

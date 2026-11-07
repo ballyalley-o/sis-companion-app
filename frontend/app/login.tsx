@@ -21,7 +21,7 @@ const useStyles = makeStyles((c) => ({
   root: { flex: 1, backgroundColor: c.surface },
   hero: { height: 300, justifyContent: "flex-end" },
   heroInner: { padding: spacing.xl, gap: spacing.sm },
-  badge: { width: 56, height: 56, borderRadius: radius.md, backgroundColor: c.brandPrimary, alignItems: "center", justifyContent: "center" },
+  logo: { width: 180, height: 68 },
   form: { padding: spacing.xl, gap: spacing.lg },
   demo: { flex: 1, minHeight: 48, borderRadius: radius.md, borderWidth: 1, borderColor: c.borderStrong, alignItems: "center", justifyContent: "center", backgroundColor: c.surfaceSecondary },
   stripe: { height: 6, backgroundColor: c.brandPrimary },
@@ -114,8 +114,8 @@ export default function Login() {
           <LinearGradient colors={desktop ? [colors.scrim, "rgba(0,0,0,0.75)", colors.surface] : ["transparent", colors.scrim, colors.surface]} style={{ position: "absolute", width: "100%", height: "100%" }} />
           <View style={[s.heroInner, desktop ? s.desktopHeroInner : { paddingTop: insets.top }]}>
             <View style={s.brand}>
-              <View style={s.badge}><Icon name="pickaxe" size={32} color={colors.onBrandPrimary} /></View>
-              {desktop && <View style={{ gap: 4 }}><Body style={{ fontFamily: fonts.display, fontSize: 26, color: colors.onSurface }}>DRILLSTOCK PRO</Body><Label>Warehouse workspace</Label></View>}
+              <Image source={require("../assets/images/sis-logo.png")} accessibilityLabel="Site Investigation Supply" contentFit="contain" style={s.logo} />
+              {desktop && <View style={{ gap: 4 }}><Body style={{ fontFamily: fonts.display, fontSize: 26, color: colors.onSurface }}>SIS Companion</Body><Label>Warehouse workspace</Label></View>}
             </View>
             {desktop ? <View style={{ gap: spacing.xl, maxWidth: 470 }}>
               <Label style={{ color: colors.brandPrimary }}>QLD + NSW warehouse operations</Label>
@@ -126,7 +126,7 @@ export default function Login() {
                 <View style={s.feature}><Icon name="truck-check" size={23} color={colors.brandPrimary} /><Body>Scan orders and count arrivals</Body></View>
                 <View style={s.feature}><Icon name="tools" size={23} color={colors.brandPrimary} /><Body>Know where your equipment is</Body></View>
               </View>
-            </View> : <><H1>DrillStock Pro</H1><Body>QLD + NSW warehouse stock, bins & equipment register</Body></>}
+            </View> : <><H1>SIS Companion</H1><Body>QLD + NSW warehouse stock, bins & equipment register</Body></>}
             {desktop && <Label>Queensland · New South Wales</Label>}
           </View>
         </View>

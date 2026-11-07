@@ -12,7 +12,7 @@ export default function Root({ children }: PropsWithChildren) {
           name="viewport"
           content="width=device-width, initial-scale=1, shrink-to-fit=no"
         />
-        <meta name="theme-color" content="#111827" />
+        <meta name="theme-color" content="#1C2228" />
         <link rel="manifest" href="/manifest.json" />
         <script src="https://accounts.google.com/gsi/client" async defer />
         {/*

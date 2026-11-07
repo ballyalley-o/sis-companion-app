@@ -3,7 +3,7 @@ import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import List, Literal, Optional
+from typing import Annotated, List, Literal, Optional
 from urllib.parse import unquote, urlparse
 
 import base64
@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Req
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, Response
 from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from pymongo.errors import DuplicateKeyError
 from starlette.middleware.cors import CORSMiddleware
 
@@ -564,7 +564,7 @@ async def resolve_scan(payload: str, warehouse_id: Optional[str] = None, user=De
     if matches:
         b = matches[0]
         return {"type": "bin", "id": b["id"], "code": b["code"]}
-    e = await db.equipment.find_one({"code": code}, NOPROJ)
+    e = await db.equipment.find_one({"code": code, "archived": {"$ne": True}}, NOPROJ)
     if e:
         return {"type": "equipment", "id": e["id"], "code": e["code"]}
     p = await db.products.find_one({"sku": code}, NOPROJ)
@@ -1576,7 +1576,10 @@ async def read_all(user=Depends(current_user)):
 @api.get("/equipment")
 async def list_equipment(status: Optional[str] = None, warehouse_id: Optional[str] = None, user=Depends(current_user)):
     wh = scope_wh(user, warehouse_id)
-    eqs = await db.equipment.find({"warehouse_id": wh} if wh else {}, NOPROJ).sort("code", 1).to_list(1000)
+    equipment_filter = {"archived": {"$ne": True}}
+    if wh:
+        equipment_filter["warehouse_id"] = wh
+    eqs = await db.equipment.find(equipment_filter, NOPROJ).sort("code", 1).to_list(1000)
     loans = {ln["id"]: ln for ln in await db.equipment_loans.find({"status": "out"}, NOPROJ).to_list(1000)}
     out = []
     nowi = iso()
@@ -1598,6 +1601,7 @@ async def list_equipment(status: Optional[str] = None, warehouse_id: Optional[st
 
 class EquipmentIn(BaseModel):
     code: str
+    serial_number: Optional[str] = Field(default=None, max_length=100)
     name: str
     category: str = ""
     warehouse_id: str
@@ -1613,7 +1617,8 @@ async def create_equipment(body: EquipmentIn, user=Depends(roles("admin", "manag
     if await db.equipment.find_one({"code": code}):
         raise HTTPException(409, "Equipment ID already exists")
     doc = {"id": nid(), "code": code, "name": body.name, "category": body.category, "warehouse_id": body.warehouse_id,
-           "status": "available", "notes": "", "current_loan_id": None, "home_bin_id": body.home_bin_id}
+           "status": "available", "notes": "", "current_loan_id": None, "home_bin_id": body.home_bin_id,
+           "serial_number": (body.serial_number or "").strip() or None}
     await db.equipment.insert_one(dict(doc))
     await audit(user, "equipment.create", "equipment", doc["id"], {"code": code})
     return doc
@@ -1629,10 +1634,64 @@ async def get_equipment(eid: str, user=Depends(current_user)):
     return {**e, "current_loan": loan, "overdue": bool(loan and loan.get("due_at") and loan["due_at"] < iso()), "history": hist}
 
 
+class EquipmentDetailsIn(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    serial_number: str = Field(default="", max_length=100)
+
+
+@api.patch("/equipment/{eid}")
+async def update_equipment_details(eid: str, body: EquipmentDetailsIn, user=Depends(roles("admin"))):
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(422, "Equipment name is required")
+    changes = {"name": name, "serial_number": body.serial_number.strip() or None}
+    result = await db.equipment.update_one(
+        {"id": eid, "archived": {"$ne": True}}, {"$set": changes},
+    )
+    if not result.matched_count:
+        raise HTTPException(404, "Equipment not found")
+    await audit(user, "equipment.update", "equipment", eid, {"fields": list(changes)})
+    return changes
+
+
+class EquipmentPhotoIn(BaseModel):
+    path: str = Field(min_length=1, max_length=512)
+
+
+@api.put("/equipment/{eid}/photo")
+async def set_equipment_photo(eid: str, body: EquipmentPhotoIn, user=Depends(roles("admin", "manager"))):
+    equipment = await db.equipment.find_one({"id": eid, "archived": {"$ne": True}}, NOPROJ)
+    if not equipment:
+        raise HTTPException(404, "Equipment not found")
+    ensure_wh_access(user, equipment["warehouse_id"])
+    if not await db.files.find_one({
+        "storage_path": body.path, "owner_id": user["id"], "is_deleted": False,
+        "content_type": {"$in": list(ALLOWED)},
+    }):
+        raise HTTPException(400, "Upload an image before attaching it")
+    photo_filter = {"id": eid, "archived": {"$ne": True}}
+    if user["role"] != "admin":
+        photo_filter["photo_path"] = None
+    result = await db.equipment.update_one(
+        photo_filter,
+        {"$set": {"photo_path": body.path}},
+    )
+    if not result.matched_count:
+        raise HTTPException(409, "Equipment already has a photo")
+    await audit(user, "equipment.photo", "equipment", eid, {"code": equipment["code"]})
+    return {"photo_path": body.path}
+
+
 Condition = Literal["good", "fair", "damaged"]
 
 
+SignatureCoordinate = Annotated[int, Field(strict=True, ge=0, le=1000)]
+SignaturePoint = tuple[SignatureCoordinate, SignatureCoordinate]
+SignatureStroke = Annotated[list[SignaturePoint], Field(min_length=1, max_length=256)]
+
+
 class CheckoutIn(BaseModel):
+    collector_signature: list[SignatureStroke] = Field(min_length=1, max_length=32)
     driller_name: str
     rig_number: str
     condition: Condition
@@ -1641,10 +1700,18 @@ class CheckoutIn(BaseModel):
     due_days: int = Field(ge=1, le=90, default=7)
 
 
+    @field_validator("collector_signature")
+    @classmethod
+    def validate_collector_signature(cls, strokes: list[SignatureStroke]) -> list[SignatureStroke]:
+        if not any(point != stroke[0] for stroke in strokes for point in stroke):
+            raise ValueError("Collector signature must contain a drawn stroke")
+        return strokes
+
+
 @api.post("/equipment/{eid}/checkout")
 async def checkout(eid: str, body: CheckoutIn, user=Depends(current_user)):
     loan_id = nid()
-    e = await db.equipment.find_one_and_update({"id": eid, "status": "available"},
+    e = await db.equipment.find_one_and_update({"id": eid, "status": "available", "archived": {"$ne": True}},
                                                {"$set": {"status": "checked_out", "current_loan_id": loan_id}})
     if not e:
         raise HTTPException(409, "Equipment is not available")
@@ -1653,7 +1720,7 @@ async def checkout(eid: str, body: CheckoutIn, user=Depends(current_user)):
             "checkout_at": iso(), "due_at": (now() + timedelta(days=body.due_days)).isoformat(),
             "checkout_condition": body.condition, "checkout_notes": body.notes, "checkout_photos": body.photos,
             "return_at": None, "return_condition": None, "return_notes": None, "return_photos": [], "status": "out",
-            "checked_out_by": user["name"]}
+            "checked_out_by": user["name"], "collector_signature": body.collector_signature}
     await db.equipment_loans.insert_one(dict(loan))
     await audit(user, "equipment.checkout", "equipment", eid, {"code": e["code"], "rig": body.rig_number})
     return loan

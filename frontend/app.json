@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "DrillStock Pro",
+    "name": "SIS Companion",
     "slug": "frontend",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -18,7 +18,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#1C2228"
       },
       "package": "com.emergent.drillstockroom.lgzu43",
       "permissions": [
@@ -29,25 +29,25 @@
       "bundler": "metro",
       "output": "single",
       "favicon": "./assets/images/favicon.png",
-      "name": "DrillStock Pro",
-      "shortName": "DrillStock",
+      "name": "SIS Companion",
+      "shortName": "SIS Companion",
       "lang": "en-AU",
       "description": "Warehouse stock, bins and equipment for authorised staff.",
       "scope": "/",
       "startUrl": "/",
       "display": "standalone",
-      "themeColor": "#111827",
-      "backgroundColor": "#000000"
+      "themeColor": "#1C2228",
+      "backgroundColor": "#1C2228"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-image.png",
+          "image": "./assets/images/sis-logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#000000"
+          "backgroundColor": "#1C2228"
         }
       ],
       "expo-font",

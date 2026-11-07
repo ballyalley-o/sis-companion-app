@@ -1,6 +1,4 @@
-// Design tokens for DrillStock Pro. Dark-first rugged utility theme
-// (values from /app/design_guidelines.json). Components import colors via
-// useTheme() or makeStyles(); never write color literals in components.
+// SIS Companion design tokens. Use useTheme() or makeStyles() in components.
 
 import { useMemo } from "react";
 import { Appearance, StyleSheet, useColorScheme } from "react-native";
@@ -8,24 +6,24 @@ import { Appearance, StyleSheet, useColorScheme } from "react-native";
 export type ColorScheme = "light" | "dark";
 
 const dark = {
-  surface: "#121212",
+  surface: "#1C2228",
   onSurface: "#F2F2F2",
-  surfaceSecondary: "#242424",
+  surfaceSecondary: "#262D35",
   onSurfaceSecondary: "#E0E0E0",
-  surfaceTertiary: "#333333",
+  surfaceTertiary: "#323841",
   onSurfaceTertiary: "#CCCCCC",
   surfaceInverse: "#EEEEEE",
-  onSurfaceInverse: "#121212",
+  onSurfaceInverse: "#1C2228",
   muted: "#8A8A8A",
 
-  brand: "#FFD600",
-  onBrand: "#121212",
-  brandPrimary: "#FFD600",
-  onBrandPrimary: "#121212",
-  brandSecondary: "#E5C000",
-  onBrandSecondary: "#121212",
-  brandTertiary: "#4D4100",
-  onBrandTertiary: "#FFD600",
+  brand: "#F5AD00",
+  onBrand: "#1C2228",
+  brandPrimary: "#F5AD00",
+  onBrandPrimary: "#1C2228",
+  brandSecondary: "#F0BE69",
+  onBrandSecondary: "#1C2228",
+  brandTertiary: "#503A16",
+  onBrandTertiary: "#F5AD00",
 
   success: "#00E676",
   onSuccess: "#000000",
@@ -36,9 +34,9 @@ const dark = {
   info: "#40C4FF",
   onInfo: "#000000",
 
-  border: "#3A3A3A",
-  borderStrong: "#5A5A5A",
-  divider: "#2A2A2A",
+  border: "#3C4550",
+  borderStrong: "#5C6875",
+  divider: "#323841",
   scrim: "rgba(0,0,0,0.75)",
   overlay: "rgba(0,0,0,0.6)",
 };

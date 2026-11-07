@@ -1,3 +1,4 @@
+import { Image } from "expo-image";
 import { Redirect, Tabs, useRouter } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { Platform, Pressable, useWindowDimensions, View } from "react-native";
@@ -8,7 +9,7 @@ import { fonts, makeStyles, spacing, useTheme } from "@/src/theme";
 
 const sidebarStyles = makeStyles((c) => ({
   root: { width: 248, height: "100%", flexGrow: 0, flexShrink: 0, backgroundColor: c.surfaceSecondary, borderRightWidth: 1, borderRightColor: c.border, padding: spacing.lg, gap: spacing.xl },
-  brand: { paddingVertical: spacing.md, paddingHorizontal: spacing.sm, gap: 6 },
+  brand: { paddingVertical: spacing.md, paddingHorizontal: spacing.sm, flexDirection: "row", alignItems: "center", gap: spacing.xs },
   nav: { gap: 6 },
   item: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: spacing.md, paddingHorizontal: spacing.md, borderRadius: 6 },
 }));
@@ -22,8 +23,10 @@ function DesktopSidebar({ state, descriptors, navigation, user }: any) {
   return (
     <View style={s.root}>
       <View style={s.brand}>
-        <Body style={{ fontFamily: fonts.display, fontSize: 23, color: colors.onSurface }}>DRILLSTOCK PRO</Body>
-        <Label>WAREHOUSE WORKSPACE</Label>
+        <Image source={require("../../assets/images/adaptive-icon.png")} accessibilityLabel="SIS logo" style={{ width: 48, height: 48 }} contentFit="contain" />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Body style={{ fontFamily: fonts.display, fontSize: 23, color: colors.onSurface }}>SIS Companion</Body>
+        </View>
       </View>
       <View style={s.nav}>
         {items.map((route: any) => {

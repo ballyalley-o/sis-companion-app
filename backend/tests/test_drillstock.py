@@ -217,11 +217,12 @@ def test_cycle_count_flow(tokens):
 
 
 # ---------------------------- equipment
-def test_equipment_overdue_seeded(tokens):
-    r = requests.get(f"{API}/equipment?status=overdue", headers=H(tokens["qld_mgr"]), timeout=10)
+def test_equipment_demo_catalog(tokens):
+    r = requests.get(f"{API}/equipment?warehouse_id=QLD", headers=H(tokens["qld_mgr"]), timeout=10)
     assert r.status_code == 200
     codes = [e["code"] for e in r.json()]
-    assert "EQ-1003" in codes
+    assert {"SL-001", "COMP-001", "COMP-002", "REEL-001"} <= set(codes)
+    assert "EQ-1003" not in codes
 
 
 def test_equipment_checkout_return_damaged(tokens):
@@ -230,6 +231,9 @@ def test_equipment_checkout_return_damaged(tokens):
     assert eqs, "no available QLD equipment"
     eid = eqs[0]["id"]
     body = {"driller_name": "Jake", "rig_number": "RIG-01", "condition": "good", "notes": "test", "photos": []}
+    unsigned = requests.post(f"{API}/equipment/{eid}/checkout", json=body, headers=H(tok), timeout=15)
+    assert unsigned.status_code == 422
+    body["collector_signature"] = [[[100, 300], [250, 100], [500, 250]]]
     r = requests.post(f"{API}/equipment/{eid}/checkout", json=body, headers=H(tok), timeout=15)
     assert r.status_code == 200
     # checkout again -> 409
@@ -241,6 +245,7 @@ def test_equipment_checkout_return_damaged(tokens):
     assert rr.status_code == 200
     e = requests.get(f"{API}/equipment/{eid}", headers=H(tok), timeout=10).json()
     assert e["status"] == "maintenance"
+    assert e["history"][0]["collector_signature"] == body["collector_signature"]
     # mark available (manager)
     rm = requests.post(f"{API}/equipment/{eid}/available", headers=H(tokens["qld_mgr"]), timeout=10)
     assert rm.status_code == 200
@@ -277,7 +282,7 @@ def test_scan_resolves(tokens):
     tok = tokens["admin"]
     r1 = requests.get(f"{API}/scan/BIN:QLD-A01", headers=H(tok), timeout=10)
     assert r1.status_code == 200 and r1.json()["type"] == "bin"
-    r2 = requests.get(f"{API}/scan/EQ-1001", headers=H(tok), timeout=10)
+    r2 = requests.get(f"{API}/scan/SL-001", headers=H(tok), timeout=10)
     assert r2.status_code == 200 and r2.json()["type"] == "equipment"
     r3 = requests.get(f"{API}/scan/NOSUCH", headers=H(tok), timeout=10)
     assert r3.status_code == 404

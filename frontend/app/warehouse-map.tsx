@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
-import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useAuth } from "@/src/auth";
-import { useApi } from "@/src/hooks";
-import { Body, Button, Card, ChipRow, ErrorState, Field, H3, Header, Icon, Label, Loading, Mono } from "@/src/ui";
-import { useTheme } from "@/src/theme";
-import { baysOnLevel, locateBin, mapSections, rackOffset } from "@/src/warehouseMap";
+import { useEffect, useRef, useState } from "react"
+import { AccessibilityInfo, Animated, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native"
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router"
+import { useAuth } from "@/src/auth"
+import { useApi } from "@/src/hooks"
+import { Body, Button, Card, ChipRow, ErrorState, Field, H3, Header, Icon, Label, Loading, Mono } from "@/src/ui"
+import { useTheme } from "@/src/theme"
+import { baysOnLevel, locateBin, mapSections, rackOffset } from "@/src/warehouseMap"
+import { formatText } from "@/src/utils/format/format-text"
 
 function Radar({ small = false }: { small?: boolean }) {
   const { colors } = useTheme();
@@ -28,13 +29,13 @@ function Radar({ small = false }: { small?: boolean }) {
     <View style={{ width: size * 0.65, height: size * 0.65, borderRadius: size, borderWidth: 1, borderColor: colors.error, alignItems: "center", justifyContent: "center" }}><View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.error }} /></View>
   </View>;
 }
-const AISLES: Record<string, string> = { SEC1: "A01 · Main cross aisle", SEC2: "A03 · Rack access", SEC3: "A02 · Lower cross aisle", SEC4: "A02 · Lower cross aisle" };
+const AISLES: Record<string, string> = { SEC1: "SEC1 · Main cross aisle", SEC2: "SEC2 · Rack access", SEC3: "SEC3 · Lower cross aisle", SEC4: "SEC4 · Lower cross aisle" };
 type Pick = { kind: "product" | "equipment"; id: string };
 
 function AreaChip({ area, color, compact = false }: { area: string; color: string; compact?: boolean }) {
   const { colors } = useTheme();
   return <View style={{ flexShrink: 1, borderRadius: 99, borderWidth: 1, borderColor: color, backgroundColor: colors.surfaceTertiary, paddingHorizontal: compact ? 5 : 8, paddingVertical: 3 }}>
-    <Text numberOfLines={1} style={{ color: colors.onSurfaceSecondary, fontSize: compact ? 9 : 10, fontWeight: "600" }}>{area}</Text>
+    <Text numberOfLines={1} style={{ color: colors.onSurfaceSecondary, fontSize: compact ? 9 : 10, fontWeight: "600" }}>{formatText('YETEFW', 'uppercase')}</Text>
   </View>;
 }
 
@@ -139,7 +140,7 @@ export default function WarehouseMap() {
           </View>
           {target && <Body style={{ fontSize: 12 }}>Tap the radar section to jump to {target.code} in the detailed rack view.</Body>}
           <View testID="warehouse-map-canvas" style={{ width: mapWidth, height: 735 * scale, backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8 }}>
-            {[{ x: 250, y: 245, text: "A01 / MAIN CROSS AISLE" }, { x: 260, y: 458, text: "A02 / LOWER CROSS AISLE" }, { x: 42, y: 510, text: "RECEIVING ↑" }, { x: 760, y: 370, text: "A03 / RACK ACCESS" }].map(label => <Text key={label.text} style={{ position: "absolute", left: label.x * scale, top: label.y * scale, fontSize: Math.max(8, 13 * scale), color: colors.muted }}>{label.text}</Text>)}
+            {[{ x: 250, y: 245, text: "SEC1 / MAIN CROSS AISLE" }, { x: 260, y: 458, text: "SEC2 / LOWER CROSS AISLE" }, { x: 42, y: 510, text: "RECEIVING ↑" }, { x: 760, y: 370, text: "A03 / RACK ACCESS" }].map(label => <Text key={label.text} style={{ position: "absolute", left: label.x * scale, top: label.y * scale, fontSize: Math.max(8, 13 * scale), color: colors.muted }}>{label.text}</Text>)}
             <View style={{ position: "absolute", left: 45 * scale, top: 330 * scale, width: 370 * scale, height: 85 * scale, backgroundColor: colors.surfaceTertiary, justifyContent: "center", padding: 10 * scale }}><Text style={{ color: colors.onSurfaceSecondary, fontSize: Math.max(8, 14 * scale) }}>DISPATCH → STAGING</Text></View>
             {mapSections.map(s => {
               const selectedSection = section.code === s.code, hit = target?.section.code === s.code;

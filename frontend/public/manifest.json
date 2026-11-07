@@ -1,14 +1,14 @@
 {
-  "name": "DrillStock Pro",
-  "short_name": "DrillStock",
+  "name": "SIS Companion",
+  "short_name": "SIS Companion",
   "description": "Warehouse stock, bins and equipment for authorised staff.",
   "lang": "en-AU",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#111827",
-  "background_color": "#000000",
+  "theme_color": "#1C2228",
+  "background_color": "#1C2228",
   "icons": [
     {
       "src": "/pwa-icon-192.png",
