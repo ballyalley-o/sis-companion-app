@@ -2,7 +2,7 @@ import { useState } from "react"
 import { FlatList, RefreshControl, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { isStaff, useAuth } from "state/auth"
-import { fmtDate, useApi } from "lib/hooks"
+import { fmtDate, useApi } from "lib/hook"
 import { Body, Card, ChipRow, EmptyState, ErrorState, Header, Label, Loading, Mono, Row, StatusPill } from "component/ui"
 import { makeStyles, spacing, useTheme } from "design/theme"
 

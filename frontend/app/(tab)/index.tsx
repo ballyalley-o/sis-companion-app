@@ -4,8 +4,8 @@ import { Platform, Pressable, RefreshControl, ScrollView, View, useWindowDimensi
 import { useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { isStaff, useAuth } from "state/auth"
-import { fmtDate, useApi } from "lib/hooks"
-import { usesNativeTabs } from "config/navigation"
+import { fmtDate, useApi } from "lib/hook"
+import { usesNativeTab } from "config/navigation"
 import { Body, Button, Card, ChipRow, ErrorState, H1, H3, Icon, IconButton, IconName, Label, Loading, Mono, Row, StatusPill } from "component/ui"
 import { fonts, makeStyles, radius, spacing, useTheme } from "design/theme"
 
@@ -48,7 +48,7 @@ export default function Home() {
   const [wh, setWh] = useState<string>(user?.role === "admin" ? "ALL" : user?.warehouse_id || "ALL")
   const q = useApi<any>(`/dashboard${wh !== "ALL" && user?.role !== "manager" ? `?warehouse_id=${wh}` : ""}`)
   const unread = useApi<{ count: number }>("/notifications/unread-count")
-  const bottomChrome = usesNativeTabs ? insets.bottom : 0
+  const bottomChrome = usesNativeTab ? insets.bottom : 0
   const d = q.data
 
   return (

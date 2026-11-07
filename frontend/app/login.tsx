@@ -116,7 +116,7 @@ export default function Login() {
           <LinearGradient colors={desktop ? [colors.scrim, "rgba(0,0,0,0.75)", colors.surface] : ["transparent", colors.scrim, colors.surface]} style={{ position: "absolute", width: "100%", height: "100%" }} />
           <View style={[s.heroInner, desktop ? s.desktopHeroInner : { paddingTop: insets.top }]}>
             <View style={s.brand}>
-              <Image source={require("../assets/images/sis-logo.png")} accessibilityLabel="Site Investigation Supply" contentFit="contain" style={s.logo} />
+              <Image source={require("../asset/image/sis-logo.png")} accessibilityLabel="Site Investigation Supply" contentFit="contain" style={s.logo} />
               {desktop && <View style={{ gap: 4 }}><Body style={{ fontFamily: fonts.display, fontSize: 26, color: colors.onSurface }}>SIS Companion</Body><Label>Warehouse workspace</Label></View>}
             </View>
             {desktop ? <View style={{ gap: spacing.xl, maxWidth: 470 }}>

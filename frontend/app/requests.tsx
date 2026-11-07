@@ -5,7 +5,7 @@ import { useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useDecision } from "component/decision"
 import { isStaff, useAuth } from "state/auth"
-import { fmtDate, useApi } from "lib/hooks"
+import { fmtDate, useApi } from "lib/hook"
 import { Body, Button, Card, ChipRow, EmptyState, ErrorState, Header, IconButton, Label, Loading, Mono, Row, StatusPill } from "component/ui"
 import { makeStyles, spacing, useTheme } from "design/theme"
 

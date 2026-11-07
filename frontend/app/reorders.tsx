@@ -1,26 +1,26 @@
-import { PATH } from 'route/path'
-import { useState } from "react"
-import { FlatList, RefreshControl, View } from "react-native"
-import { useRouter } from "expo-router"
-import { useQueryClient } from "@tanstack/react-query"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { api } from "lib/api"
-import { fmtDate, useApi } from "lib/hooks"
+import { useState }                                                                                                     from "react"
+import { FlatList, RefreshControl, View }                                                                               from "react-native"
+import { PATH }                                                                                                         from 'route/path'
+import { useRouter }                                                                                                    from "expo-router"
+import { useQueryClient }                                                                                               from "@tanstack/react-query"
+import { useSafeAreaInsets }                                                                                            from "react-native-safe-area-context"
+import { api }                                                                                                          from "lib/api"
+import { fmtDate, useApi }                                                                                              from "lib/hook"
 import { Body, Button, Card, ChipRow, EmptyState, ErrorState, Header, Label, Loading, Mono, Row, StatusPill, useToast } from "component/ui"
-import { makeStyles, spacing, useTheme } from "design/theme"
+import { makeStyles, spacing, useTheme }                                                                                from "design/theme"
 
 const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface }, chips: { borderBottomWidth: 1, borderBottomColor: c.divider } }))
 const pill = (s: string) => (s === "open" ? "pending" : s === "ordered" ? "processing" : s === "received" ? "approved" : "cancelled")
 
 export default function Reorders() {
-  const s = useStyles()
-  const { colors } = useTheme()
-  const insets = useSafeAreaInsets()
-  const router = useRouter()
-  const toast = useToast()
-  const qc = useQueryClient()
+  const s                   = useStyles()
+  const { colors }          = useTheme()
+  const insets              = useSafeAreaInsets()
+  const router              = useRouter()
+  const toast               = useToast()
+  const qc                  = useQueryClient()
   const [status, setStatus] = useState("open")
-  const q = useApi<any[]>(`/reorders?status=${status}`)
+  const q                   = useApi<any[]>(`/reorders?status=${status}`)
 
   const setSt = async (r: any, st: "ordered" | "cancelled") => {
     try {

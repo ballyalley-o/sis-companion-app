@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { KeyboardAvoidingView } from "react-native-keyboard-controller"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { api } from "lib/api"
-import { useApi } from "lib/hooks"
+import { useApi } from "lib/hook"
 import { Body, Button, Card, ErrorState, Header, Label, Loading, Mono, Row, StatusPill, useToast } from "component/ui"
 import { fonts, makeStyles, radius, spacing, useTheme } from "design/theme"
 

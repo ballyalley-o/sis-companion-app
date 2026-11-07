@@ -1,13 +1,13 @@
-import { PATH } from 'route/path'
-import { useEffect, useRef, useState } from "react"
-import { AccessibilityInfo, Animated, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native"
-import { Redirect, useLocalSearchParams, useRouter } from "expo-router"
-import { useAuth } from "state/auth"
-import { useApi } from "lib/hooks"
+import { PATH }                                                                                   from 'route/path'
+import { useEffect, useRef, useState }                                                            from "react"
+import { AccessibilityInfo, Animated, Pressable, ScrollView, Text, useWindowDimensions, View }    from "react-native"
+import { Redirect, useLocalSearchParams, useRouter }                                              from "expo-router"
+import { useAuth }                                                                                from "state/auth"
+import { useApi }                                                                                 from "lib/hook"
 import { Body, Button, Card, ChipRow, ErrorState, Field, H3, Header, Icon, Label, Loading, Mono } from "component/ui"
-import { useTheme } from "design/theme"
-import { baysOnLevel, locateBin, mapSections, rackOffset } from "lib/tool/warehouse-map"
-import { formatText } from "util/format/format-text"
+import { useTheme }                                                                               from "design/theme"
+import { baysOnLevel, locateBin, mapSections, rackOffset }                                        from "lib/tool/warehouse-map"
+import { formatText }                                                                             from "util/format/format-text"
 
 function Radar({ small = false }: { small?: boolean }) {
   const { colors } = useTheme()
@@ -41,21 +41,21 @@ function AreaChip({ area, color, compact = false }: { area: string; color: strin
 }
 
 export default function WarehouseMap() {
-  const params = useLocalSearchParams<{ product_id?: string; equipment_id?: string; wh?: string; bin_id?: string }>()
-  const { user, ready } = useAuth()
-  const router = useRouter()
-  const { colors } = useTheme()
-  const { width } = useWindowDimensions()
-  const desktop = width >= 1050
-  const [wh, setWh] = useState(params.wh || user?.warehouse_id || "QLD")
-  const [search, setSearch] = useState("")
-  const [debounced, setDebounced] = useState("")
-  const [pick, setPick] = useState<Pick | null>(params.equipment_id ? { kind: "equipment", id: params.equipment_id } : params.product_id ? { kind: "product", id: params.product_id } : null)
-  const [chosen, setChosen] = useState(params.bin_id)
+  const params                        = useLocalSearchParams<{ product_id?: string; equipment_id?: string; wh?: string; bin_id?: string }>()
+  const { user, ready }               = useAuth()
+  const router                        = useRouter()
+  const { colors }                    = useTheme()
+  const { width }                     = useWindowDimensions()
+  const desktop                       = width >= 1050
+  const [wh, setWh]                   = useState(params.wh || user?.warehouse_id || "QLD")
+  const [search, setSearch]           = useState("")
+  const [debounced, setDebounced]     = useState("")
+  const [pick, setPick]               = useState<Pick | null>(params.equipment_id ? { kind: "equipment", id: params.equipment_id } : params.product_id ? { kind: "product", id: params.product_id } : null)
+  const [chosen, setChosen]           = useState(params.bin_id)
   const [sectionCode, setSectionCode] = useState("SEC1")
-  const rackScroll = useRef<ScrollView>(null)
-  const pageScroll = useRef<ScrollView>(null)
-  const rackPosition = useRef({ column: 0, rack: 0 })
+  const rackScroll                    = useRef<ScrollView>(null)
+  const pageScroll                    = useRef<ScrollView>(null)
+  const rackPosition                  = useRef({ column: 0, rack: 0 })
   useEffect(() => { const timer = setTimeout(() => setDebounced(search.trim()), 250); return () => clearTimeout(timer) }, [search])
   useEffect(() => {
     setPick(params.equipment_id ? { kind: "equipment", id: params.equipment_id } : params.product_id ? { kind: "product", id: params.product_id } : null)

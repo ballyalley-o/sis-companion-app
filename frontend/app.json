@@ -4,7 +4,7 @@
     "slug": "frontend",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./asset/image/icon.png",
     "scheme": "frontend",
     "userInterfaceStyle": "dark",
     "ios": {
@@ -17,7 +17,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./asset/image/adaptive-icon.png",
         "backgroundColor": "#1C2228"
       },
       "package": "com.emergent.drillstockroom.lgzu43",
@@ -28,7 +28,7 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/favicon.png",
+      "favicon": "./asset/image/favicon.png",
       "name": "SIS Companion",
       "shortName": "SIS Companion",
       "lang": "en-AU",
@@ -44,7 +44,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/sis-logo.png",
+          "image": "./asset/image/sis-logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#1C2228"
