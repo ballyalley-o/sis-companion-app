@@ -1,17 +1,15 @@
-import { GLOBAL } from 'config/global.config'
-import { PATH } from 'route/path'
-import { useEffect, useState } from "react"
-import { Platform, Pressable, useWindowDimensions, View } from "react-native"
-import { Image } from "expo-image"
-import { LinearGradient } from "expo-linear-gradient"
-import { useLocalSearchParams, useRouter } from "expo-router"
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { useAuth } from "state/auth"
+import { useEffect, useState }                                 from "react"
+import { GLOBAL }                                              from 'config/global.config'
+import { Platform, Pressable, useWindowDimensions, View }      from "react-native"
+import { Image }                                               from "expo-image"
+import { useLocalSearchParams, useRouter }                     from "expo-router"
+import { KeyboardAwareScrollView }                             from "react-native-keyboard-controller"
+import { useSafeAreaInsets }                                   from "react-native-safe-area-context"
+import { PATH }                                                from 'route/path'
+import { useAuth }                                             from "state/auth"
 import { Body, Button, Field, H1, Icon, Label, Row, useToast } from "component/ui"
-import { fonts, makeStyles, radius, spacing, useTheme } from "design/theme"
+import { makeStyles, radius, spacing, useTheme }               from "design/theme"
 
-const HERO = "https://images.unsplash.com/photo-1562237553-fd52cb2067b6?crop=entropy&cs=srgb&fm=jpg&q=70&w=1200"
 
 const DEMO = GLOBAL.ENABLE_DEMO_ACCOUNTS === "true" ? [
   { label: "Driller", email: GLOBAL.DEMO_DRILLER_EMAIL || "", pw: GLOBAL.DEMO_DRILLER_PASSWORD || "" },
@@ -20,37 +18,40 @@ const DEMO = GLOBAL.ENABLE_DEMO_ACCOUNTS === "true" ? [
 ].filter((account) => account.email && account.pw) : []
 
 const useStyles = makeStyles((c) => ({
-  root: { flex: 1, backgroundColor: c.surface },
-  hero: { height: 300, justifyContent: "flex-end" },
-  heroInner: { padding: spacing.xl, gap: spacing.sm },
-  logo: { width: 180, height: 68 },
-  form: { padding: spacing.xl, gap: spacing.lg },
-  demo: { flex: 1, minHeight: 48, borderRadius: radius.md, borderWidth: 1, borderColor: c.borderStrong, alignItems: "center", justifyContent: "center", backgroundColor: c.surfaceSecondary },
-  stripe: { height: 6, backgroundColor: c.brandPrimary },
-  desktopHero: { width: "52%", height: "auto", borderRightWidth: 1, borderRightColor: c.border },
+  root            : { flex: 1, backgroundColor: c.surface },
+  hero            : { minHeight: 220, overflow: "hidden", backgroundColor: c.surfaceSecondary },
+  heroInner       : { padding: spacing.xl, gap: spacing.xl },
+  shapeField      : { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
+  upperShape      : { position: "absolute", width: "78%", height: "50%", top: "-16%", right: "-20%", borderRadius: 52, backgroundColor: c.surfaceTertiary, transform: [{ rotate: "-24deg" }] },
+  lowerShape      : { position: "absolute", width: "96%", height: "60%", bottom: "-28%", left: "-23%", borderRadius: 64, backgroundColor: c.surface, transform: [{ rotate: "-25deg" }] },
+  ring            : { position: "absolute", width: "56%", aspectRatio: 1, right: "-14%", bottom: "-9%", borderRadius: 999, borderWidth: 1, borderColor: c.borderStrong, opacity: 0.55 },
+  desktopTitle    : { fontSize: 64, lineHeight: 68 },
+  logo            : { width: 180, height: 68 },
+  form            : { padding: spacing.xl, gap: spacing.lg },
+  demo            : { flex: 1, minHeight: 48, borderRadius: radius.md, borderWidth: 1, borderColor: c.borderStrong, alignItems: "center", justifyContent: "center", backgroundColor: c.surfaceSecondary },
+  stripe          : { height: 6, backgroundColor: c.brandPrimary },
+  desktopHero     : { width: "52%", height: "auto", borderRightWidth: 1, borderRightColor: c.border },
   desktopHeroInner: { flex: 1, padding: 48, justifyContent: "space-between", gap: spacing.xxxl },
-  brand: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  desktopPanel: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.xxl },
-  desktopForm: { width: "100%", maxWidth: 420, padding: 0 },
-  feature: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  desktopPanel    : { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.xxl },
+  desktopForm     : { width: "100%", maxWidth: 420, padding: 0 },
 }))
 
 export default function Login() {
-  const s = useStyles()
-  const { colors } = useTheme()
-  const insets = useSafeAreaInsets()
-  const { width, height } = useWindowDimensions()
-  const desktop = Platform.OS === "web" && width >= 960
+  const s                                = useStyles()
+  const { colors }                       = useTheme()
+  const insets                           = useSafeAreaInsets()
+  const { width, height }                = useWindowDimensions()
+  const desktop                          = Platform.OS === "web" && width >= 960
   const { login, loginWithGoogle, user } = useAuth()
-  const toast = useToast()
-  const router = useRouter()
-  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>()
-  const destination = returnTo?.startsWith("/bin/") && !returnTo.startsWith("//") ? returnTo : PATH.TAB
-  const [email, setEmail] = useState("")
-  const [pw, setPw] = useState("")
-  const [show, setShow] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const googleClientId = GLOBAL.GOOGLE_CLIENT_ID
+  const toast                            = useToast()
+  const router                           = useRouter()
+  const { returnTo }                     = useLocalSearchParams<{ returnTo?: string }>()
+  const destination                      = returnTo?.startsWith("/bin/") && !returnTo.startsWith("//") ? returnTo : PATH.TAB
+  const [email, setEmail]                = useState("")
+  const [pw, setPw]                      = useState("")
+  const [show, setShow]                  = useState(false)
+  const [busy, setBusy]                  = useState(false)
+  const googleClientId                   = GLOBAL.GOOGLE_CLIENT_ID
 
   useEffect(() => {
     if (user) router.replace(destination as any)
@@ -80,10 +81,10 @@ export default function Login() {
         },
       })
       google.accounts.id.renderButton(container, {
-        type: "standard",
+        type : "standard",
         theme: "outline",
-        size: "large",
-        text: "continue_with",
+        size : "large",
+        text : "continue_with",
         shape: "rectangular",
         width: Math.min(container.clientWidth || 320, 400),
       })
@@ -112,23 +113,14 @@ export default function Login() {
     <View style={s.root}>
       <KeyboardAwareScrollView bottomOffset={24} contentContainerStyle={[{ flexGrow: 1, paddingBottom: insets.bottom + spacing.xl }, desktop && { flexDirection: "row", minHeight: height, paddingBottom: 0 }]} keyboardShouldPersistTaps="handled">
         <View testID="login-brand-panel" style={[s.hero, desktop && s.desktopHero]}>
-          <Image source={{ uri: HERO }} style={{ position: "absolute", width: "100%", height: "100%" }} contentFit="cover" />
-          <LinearGradient colors={desktop ? [colors.scrim, "rgba(0,0,0,0.75)", colors.surface] : ["transparent", colors.scrim, colors.surface]} style={{ position: "absolute", width: "100%", height: "100%" }} />
-          <View style={[s.heroInner, desktop ? s.desktopHeroInner : { paddingTop: insets.top }]}>
-            <View style={s.brand}>
-              <Image source={require("../asset/image/sis-logo.png")} accessibilityLabel="Site Investigation Supply" contentFit="contain" style={s.logo} />
-              {desktop && <View style={{ gap: 4 }}><Body style={{ fontFamily: fonts.display, fontSize: 26, color: colors.onSurface }}>SIS Companion</Body><Label>Warehouse workspace</Label></View>}
-            </View>
-            {desktop ? <View style={{ gap: spacing.xl, maxWidth: 470 }}>
-              <Label style={{ color: colors.brandPrimary }}>QLD + NSW warehouse operations</Label>
-              <H1 style={{ fontSize: 52, lineHeight: 56 }}>Everything your warehouse needs.<H1 style={{ fontSize: 52, lineHeight: 56, color: colors.brandPrimary }}> In one place.</H1></H1>
-              <Body style={{ fontSize: 17, lineHeight: 27 }}>Keep stock visible, receive supplier orders, and track equipment from arrival to the field.</Body>
-              <View style={{ gap: spacing.lg }}>
-                <View style={s.feature}><Icon name="qrcode-scan" size={23} color={colors.brandPrimary} /><Body>Find stock by item or bin</Body></View>
-                <View style={s.feature}><Icon name="truck-check" size={23} color={colors.brandPrimary} /><Body>Scan orders and count arrivals</Body></View>
-                <View style={s.feature}><Icon name="tools" size={23} color={colors.brandPrimary} /><Body>Know where your equipment is</Body></View>
-              </View>
-            </View> : <><H1>SIS Companion</H1><Body>QLD + NSW warehouse stock, bins & equipment register</Body></>}
+          <View pointerEvents="none" accessible={false} style={s.shapeField}>
+            <View style={s.upperShape} />
+            <View style={s.lowerShape} />
+            <View style={s.ring} />
+          </View>
+          <View style={[s.heroInner, desktop ? s.desktopHeroInner : { paddingTop: insets.top + spacing.xl }]}>
+            <Image source={require("../asset/image/sis-logo.png")} accessibilityLabel="Site Investigation Supply" contentFit="contain" style={s.logo} />
+            <H1 style={desktop ? s.desktopTitle : undefined}>Companion App</H1>
             {desktop && <Label>Queensland · New South Wales</Label>}
           </View>
         </View>
