@@ -128,9 +128,9 @@ export default function Login() {
         <View testID="login-form-panel" style={desktop ? s.desktopPanel : { alignItems: "center" }}>
         <View style={[s.form, desktop ? s.desktopForm : { width: "100%", maxWidth: 520 }]}>
           <View style={{ gap: spacing.sm, marginBottom: spacing.sm }}>
-            <Label style={{ color: colors.brandPrimary }}>Your warehouse workspace</Label>
+            {/* <Label style={{ color: colors.brandPrimary }}>Your warehouse workspace</Label> */}
             <H1>Welcome back</H1>
-            <Body>Sign in to manage your day's work.</Body>
+            {/* <Body>Sign in to manage your day's work.</Body> */}
           </View>
           <Field testID="login-email-input" label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@company.com" autoComplete="email" editable={!busy} />
           <View>
