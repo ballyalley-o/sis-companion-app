@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Request access | SIS Companion</title>
+<style>
+* { box-sizing: border-box }
+body { margin: 0; background: #1c2228; color: #f2f2f2; font: 16px/1.5 system-ui, sans-serif }
+main { width: min(100% - 32px, 480px); margin: 8vh auto; padding: 24px; background: #262d35; border: 1px solid #3c4550; border-radius: 16px }
+.eyebrow { color: #f5ad00; font-weight: 700 }
+h1 { margin: 8px 0; line-height: 1.15 }
+label { display: block; margin-top: 16px; font-weight: 600 }
+input, select, button { display: block; width: 100%; min-height: 46px; margin-top: 6px; padding: 8px 12px; border: 1px solid #5c6875; border-radius: 8px; font: inherit }
+input, select { color: #f2f2f2; background: #323841 }
+button { margin-top: 24px; color: #1c2228; background: #f5ad00; border-color: #f5ad00; font-weight: 700; cursor: pointer }
+</style>
+</head>
+<body><main>
+<p class="eyebrow">SIS Companion</p>
+<h1>Request access</h1>
+<p>Send your details to the SIS administrator for review. Submitting a request does not grant app access.</p>
+<form action="/join" method="post">
+<label for="name">Full name</label>
+<input id="name" name="name" autocomplete="name" maxlength="100" required>
+<label for="email">Work email</label>
+<input id="email" name="email" type="email" autocomplete="email" maxlength="254" required>
+<label for="warehouse">Home warehouse</label>
+<select id="warehouse" name="warehouse" required>
+<option value="">Select a warehouse</option><option value="QLD">Queensland</option><option value="NSW">New South Wales</option>
+</select>
+<label hidden>Leave this blank<input name="website" tabindex="-1" autocomplete="off"></label>
+<button type="submit">Send request</button>
+</form>
+</main></body>
+</html>

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated, List, Literal, Optional
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 import base64
 import io
@@ -154,13 +154,8 @@ async def google_login(body: GoogleCredentialIn):
         raise HTTPException(401, "Google account must have a verified email")
     user = await db.users.find_one({"email": email}, NOPROJ)
     if not user:
-        user = {"id": nid(), "email": email, "password_hash": None, "name": data.get("name") or email.split("@")[0],
-                "role": "driller", "warehouse_id": None, "active": True, "auth_provider": "google",
-                "picture": data.get("picture"), "created_at": iso()}
-        await db.users.insert_one(dict(user))
-        await audit(user, "user.create_google", "user", user["id"], {"email": email})
-        await notify("New Google sign-up", f"{user['name']} ({email}) joined as a driller", kind="info", roles_=["admin"])
-    elif not user.get("active"):
+        raise HTTPException(403, "Request access and wait for SIS administrator approval.")
+    if not user.get("active"):
         raise HTTPException(403, "Your account is deactivated. Contact an admin.")
     await audit(user, "auth.login_google", "user", user["id"], {})
     token = make_token(user)
@@ -316,6 +311,37 @@ async def create_user(body: UserIn, user=Depends(roles("admin"))):
     await db.users.insert_one(dict(doc))
     await audit(user, "user.create", "user", doc["id"], {"email": email, "role": body.role})
     return public_user(doc)
+
+
+class JoinApprovalIn(BaseModel):
+    password: str = Field(min_length=12, max_length=72)
+
+
+@api.get("/join-requests")
+async def list_join_requests(user=Depends(roles("admin"))):
+    return await db.join_requests.aggregate([
+        {"$sort": {"created_at": -1}},
+        {"$lookup": {"from": "users", "localField": "email", "foreignField": "email", "as": "account"}},
+        {"$match": {"account.0": {"$exists": False}}},
+        {"$project": {"_id": 0, "account": 0}},
+        {"$limit": 100},
+    ]).to_list(100)
+
+
+@api.post("/join-requests/{request_id}/approve")
+async def approve_join_request(request_id: str, body: JoinApprovalIn, user=Depends(roles("admin"))):
+    pending = await db.join_requests.find_one({"id": request_id}, NOPROJ)
+    if not pending:
+        raise HTTPException(404, "Join request not found")
+    if len(body.password.encode()) > 72:
+        raise HTTPException(422, "Temporary password must be at most 72 bytes")
+    try:
+        return await create_user(UserIn(
+            email=pending["email"], name=pending["name"], password=body.password,
+            role="driller", warehouse_id=pending["warehouse_id"],
+        ), user)
+    except DuplicateKeyError:
+        raise HTTPException(409, "Email already registered")
 
 
 @api.patch("/users/{uid}/toggle")
@@ -2046,6 +2072,47 @@ async def health_live():
 async def health_ready():
     await db.command("ping")
     return {"ok": True, "database": "ready"}
+
+
+@app.get("/join", response_class=HTMLResponse, include_in_schema=False)
+async def join_form():
+    return HTMLResponse((ROOT_DIR / "join.html").read_text(), headers={"Cache-Control": "no-store"})
+
+
+@app.post("/join", response_class=HTMLResponse, include_in_schema=False)
+async def submit_join_request(request: Request):
+    if request.headers.get("content-type", "").split(";")[0] != "application/x-www-form-urlencoded":
+        raise HTTPException(415, "Submit using the join form")
+    data = bytearray()
+    async for chunk in request.stream():
+        if len(data) + len(chunk) > 4096:
+            raise HTTPException(413, "Request is too large")
+        data.extend(chunk)
+    try:
+        fields = parse_qs(data.decode("utf-8"), max_num_fields=8)
+    except (UnicodeError, ValueError):
+        raise HTTPException(400, "Invalid form")
+    name = fields.get("name", [""])[0].strip()
+    email = fields.get("email", [""])[0].strip().lower()
+    warehouse = fields.get("warehouse", [""])[0]
+    if not (1 <= len(name) <= 100 and len(email) <= 254 and
+            re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email) and warehouse in ("QLD", "NSW")):
+        raise HTTPException(422, "Enter a name, valid work email and home warehouse")
+    if not fields.get("website") and not await db.users.find_one({"email": email}, {"_id": 1}):
+        try:
+            await db.join_requests.update_one({"_id": email}, {"$setOnInsert": {
+                "id": nid(), "name": name, "email": email, "warehouse_id": warehouse, "created_at": iso(),
+            }}, upsert=True)
+        except DuplicateKeyError:
+            pass
+    return HTMLResponse(
+        '<!doctype html><html lang="en-AU"><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        '<title>Request received | SIS Companion</title>'
+        '<body style="background:#1c2228;color:#f2f2f2;font:16px system-ui;padding:24px">'
+        '<main><h1>Request received</h1><p>Contact your SIS administrator for next steps.</p></main></body></html>',
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 app.include_router(api)
