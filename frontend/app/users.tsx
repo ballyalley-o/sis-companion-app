@@ -1,25 +1,54 @@
+import { Image } from "expo-image"
 import { useState }                                                                                                              from "react"
-import { FlatList, View }                                                                                                        from "react-native"
+import { FlatList, Linking, Text, View }                                                                                                        from "react-native"
 import { useQueryClient }                                                                                                        from "@tanstack/react-query"
 import { KeyboardAwareScrollView }                                                                                               from "react-native-keyboard-controller"
 import { useSafeAreaInsets }                                                                                                     from "react-native-safe-area-context"
-import { api }                                                                                                                   from "lib/api"
+import { api, publicJoinUrl }                                                                                                                   from "lib/api"
 import { useApi }                                                                                                                from "lib/hook"
 import { Body, Button, Card, Chip, ErrorState, Field, H3, Header, IconButton, Label, Loading, Row, Sheet, StatusPill, useToast } from "component/ui"
 import { makeStyles, spacing, useTheme }                                                                                         from "design/theme"
 
 const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface } }))
 
+type JoinRequest = { id: string; name: string; email: string; warehouse_id: string }
+
 export default function Users() {
   const s               = useStyles()
   const { colors }      = useTheme()
   const insets          = useSafeAreaInsets()
+  const joinUrl = publicJoinUrl
   const toast           = useToast()
   const qc              = useQueryClient()
   const q               = useApi<any[]>("/users")
   const [open, setOpen] = useState(false)
   const [f, setF]       = useState({ name: "", email: "", password: "", role: "driller", warehouse_id: "QLD" })
   const [busy, setBusy] = useState(false)
+
+  const requests = useApi<JoinRequest[]>("/join-requests")
+  const qr = useApi<{ data_uri: string }>(joinUrl ? `/qr?payload=${encodeURIComponent(joinUrl)}` : null)
+  const [approval, setApproval] = useState<JoinRequest | null>(null)
+  const [approvalPassword, setApprovalPassword] = useState("")
+  const [approving, setApproving] = useState(false)
+
+  const approve = async () => {
+    if (!approval || approving) return
+    setApproving(true)
+    try {
+      await api(`/join-requests/${approval.id}/approve`, {
+        method: "POST",
+        body: { password: approvalPassword },
+      })
+      setApproval(null)
+      setApprovalPassword("")
+      await qc.invalidateQueries()
+      toast("Driller account created. Share the temporary password privately.")
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Could not approve request", "error")
+    } finally {
+      setApproving(false)
+    }
+  }
 
   const create = async () => {
     setBusy(true)
@@ -44,6 +73,32 @@ export default function Users() {
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : (
         <FlatList data={q.data} keyExtractor={(u) => u.id}
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: insets.bottom + spacing.xl }}
+          ListHeaderComponent={(
+            <Card style={{ gap: spacing.md }}>
+              <H3>Driller join requests</H3>
+              <Body>Share this QR so drillers can request an account without opening the private app.</Body>
+              {joinUrl && (
+                <>
+                  {qr.data && <Image source={{ uri: qr.data.data_uri }} accessibilityLabel="QR code for the driller request form" style={{ width: 160, height: 160 }} />}
+                  {qr.isError && <Button title="Retry QR" variant="ghost" onPress={() => qr.refetch()} />}
+                  <Text selectable style={{ color: colors.onSurface }}>{joinUrl}</Text>
+                  <Button title="Open public request form" variant="ghost" onPress={() => { Linking.openURL(joinUrl).catch(() => toast("Could not open request form", "error")) }} />
+                </>
+              )}
+              {!joinUrl && <Body>Set the backend URL to display the public QR.</Body>}
+              {requests.isLoading ? <Loading /> : requests.isError ? (
+                <ErrorState message={requests.error.message} onRetry={requests.refetch} />
+              ) : requests.data?.length ? requests.data.map((request) => (
+                <Row key={request.id} style={{ gap: spacing.sm, flexWrap: "wrap" }}>
+                  <View style={{ flex: 1 }}>
+                    <Body>{request.name}</Body>
+                    <Label>{request.email} · {request.warehouse_id}</Label>
+                  </View>
+                  <Button title="Review" variant="ghost" onPress={() => { setApprovalPassword(""); setApproval(request) }} />
+                </Row>
+              )) : <Body>No pending requests.</Body>}
+            </Card>
+          )}
           renderItem={({ item: u }) => (
             <Card testID={`user-card-${u.email}`} style={!u.active ? { opacity: 0.5 } : undefined}>
               <Row>
@@ -60,6 +115,12 @@ export default function Users() {
             </Card>
           )} />
       )}
+      <Sheet visible={Boolean(approval)} onClose={() => { if (!approving) setApproval(null) }} testID="join-approval-sheet">
+        <H3>Approve driller</H3>
+        <Body>{approval?.name} · {approval?.email} · {approval?.warehouse_id}</Body>
+        <Field label="Temporary password" placeholder="At least 12 characters" secureTextEntry value={approvalPassword} onChangeText={setApprovalPassword} />
+        <Button title="Approve and create account" loading={approving} disabled={approvalPassword.length < 12} onPress={approve} />
+      </Sheet>
       <Sheet visible={open} onClose={() => setOpen(false)} testID="new-user-sheet">
         <KeyboardAwareScrollView bottomOffset={24} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.md }}>
           <H3>Add user</H3>

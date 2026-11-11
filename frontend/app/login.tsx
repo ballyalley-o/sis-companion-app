@@ -1,6 +1,7 @@
+import { publicJoinUrl } from "lib/api"
 import { useEffect, useState }                                 from "react"
 import { GLOBAL }                                              from 'config/global.config'
-import { Platform, Pressable, useWindowDimensions, View }      from "react-native"
+import { Linking, Platform, Pressable, useWindowDimensions, View }      from "react-native"
 import { Image }                                               from "expo-image"
 import { useLocalSearchParams, useRouter }                     from "expo-router"
 import { KeyboardAwareScrollView }                             from "react-native-keyboard-controller"
@@ -43,6 +44,7 @@ export default function Login() {
   const { width, height }                = useWindowDimensions()
   const desktop                          = Platform.OS === "web" && width >= 960
   const { login, loginWithGoogle, user } = useAuth()
+  const joinUrl = publicJoinUrl
   const toast                            = useToast()
   const router                           = useRouter()
   const { returnTo }                     = useLocalSearchParams<{ returnTo?: string }>()
@@ -140,6 +142,19 @@ export default function Login() {
             </Pressable>
           </View>
           <Button testID="login-submit-button" title="Sign in" icon="login" large={!desktop} loading={busy} onPress={submit} />
+          {joinUrl && (
+            <View style={{ gap: spacing.sm }}>
+              <Body>New to SIS Companion?</Body>
+              <Button
+                testID="login-request-access-button"
+                title="Request access"
+                variant="ghost"
+                onPress={() => {
+                  Linking.openURL(joinUrl).catch(() => toast("Could not open request form", "error"))
+                }}
+              />
+            </View>
+          )}
           {Platform.OS === "web" && googleClientId && <Row style={{ gap: spacing.md }}>
             <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
             <Label>or</Label>

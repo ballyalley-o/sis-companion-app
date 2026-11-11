@@ -3,7 +3,10 @@ import { Platform } from "react-native"
 import { storage } from "util/storage"
 
 // Web previews use same-origin /api when no separate backend URL is configured.
-export const BASE = `${(GLOBAL.BACKEND_URL || "").replace(/\/+$/, "")}/api`
+const backendOrigin = GLOBAL.BACKEND_URL?.replace(/\/+$/, "")
+export const BASE = `${backendOrigin || ""}/api`
+export const publicJoinUrl = backendOrigin ? `${backendOrigin}/join` : null
+
 export const TOKEN_KEY = "drillstock_token"
 
 let token = ""
