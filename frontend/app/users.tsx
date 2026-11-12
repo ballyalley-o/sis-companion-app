@@ -1,10 +1,10 @@
-import { Image } from "expo-image"
-import { useState }                                                                                                              from "react"
-import { FlatList, Linking, Text, View }                                                                                                        from "react-native"
+import { useEffect, useState }                                                                                                   from "react"
+import { FlatList, Share, Text, View, useWindowDimensions }                                                                      from "react-native"
+import { Image }                                                                                                                 from "expo-image"
 import { useQueryClient }                                                                                                        from "@tanstack/react-query"
 import { KeyboardAwareScrollView }                                                                                               from "react-native-keyboard-controller"
 import { useSafeAreaInsets }                                                                                                     from "react-native-safe-area-context"
-import { api, publicJoinUrl }                                                                                                                   from "lib/api"
+import { api, publicJoinUrl }                                                                                                    from "lib/api"
 import { useApi }                                                                                                                from "lib/hook"
 import { Body, Button, Card, Chip, ErrorState, Field, H3, Header, IconButton, Label, Loading, Row, Sheet, StatusPill, useToast } from "component/ui"
 import { makeStyles, spacing, useTheme }                                                                                         from "design/theme"
@@ -14,19 +14,40 @@ const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surfa
 type JoinRequest = { id: string; name: string; email: string; warehouse_id: string }
 
 export default function Users() {
-  const s               = useStyles()
-  const { colors }      = useTheme()
-  const insets          = useSafeAreaInsets()
-  const joinUrl = publicJoinUrl
-  const toast           = useToast()
-  const qc              = useQueryClient()
-  const q               = useApi<any[]>("/users")
-  const [open, setOpen] = useState(false)
-  const [f, setF]       = useState({ name: "", email: "", password: "", role: "driller", warehouse_id: "QLD" })
-  const [busy, setBusy] = useState(false)
+  const s                           = useStyles()
+  const { colors }                  = useTheme()
+  const insets                      = useSafeAreaInsets()
+  const { width }                   = useWindowDimensions()
+  const compact                     = width < 760
+  const joinUrl                     = publicJoinUrl
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const toast                       = useToast()
+  const qc                          = useQueryClient()
+  const q                           = useApi<any[]>("/users")
+  const [open, setOpen]             = useState(false)
+  const [f, setF]                   = useState({ name: "", email: "", password: "", role: "driller", warehouse_id: "QLD" })
+  const [busy, setBusy]             = useState(false)
 
-  const requests = useApi<JoinRequest[]>("/join-requests")
-  const qr = useApi<{ data_uri: string }>(joinUrl ? `/qr?payload=${encodeURIComponent(joinUrl)}` : null)
+  const requests                    = useApi<JoinRequest[]>("/join-requests")
+  const qr                          = useApi<{ data_uri: string }>(inviteOpen && joinUrl ? `/qr?payload=${encodeURIComponent(joinUrl)}` : null)
+  const { refetch: refreshRequest } = requests
+  useEffect(() => {
+    const timer = setInterval(() => { void refreshRequest() }, 15000)
+    return () => clearInterval(timer)
+  }, [refreshRequest])
+
+  const invite = async () => {
+    if (!joinUrl) return
+    try {
+      await Share.share({
+        title: "Join SIS Companion",
+        message: `You’re invited to request access to SIS Companion. Submit your details here: ${joinUrl} — an SIS administrator will review your request.`,
+      })
+    } catch {
+      toast("Could not share invite. You can copy the link below.", "error")
+    }
+  }
+
   const [approval, setApproval] = useState<JoinRequest | null>(null)
   const [approvalPassword, setApprovalPassword] = useState("")
   const [approving, setApproving] = useState(false)
@@ -72,31 +93,45 @@ export default function Users() {
       <Header title="Users" subtitle="Roles & warehouse access" right={<IconButton testID="users-new-button" icon="account-plus" onPress={() => setOpen(true)} />} />
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : (
         <FlatList data={q.data} keyExtractor={(u) => u.id}
+          refreshing={requests.isFetching}
+          onRefresh={() => { void refreshRequest(); void q.refetch() }}
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: insets.bottom + spacing.xl }}
           ListHeaderComponent={(
             <Card style={{ gap: spacing.md }}>
-              <H3>Driller join requests</H3>
-              <Body>Share this QR so drillers can request an account without opening the private app.</Body>
-              {joinUrl && (
-                <>
-                  {qr.data && <Image source={{ uri: qr.data.data_uri }} accessibilityLabel="QR code for the driller request form" style={{ width: 160, height: 160 }} />}
-                  {qr.isError && <Button title="Retry QR" variant="ghost" onPress={() => qr.refetch()} />}
-                  <Text selectable style={{ color: colors.onSurface }}>{joinUrl}</Text>
-                  <Button title="Open public request form" variant="ghost" onPress={() => { Linking.openURL(joinUrl).catch(() => toast("Could not open request form", "error")) }} />
-                </>
-              )}
-              {!joinUrl && <Body>Set the backend URL to display the public QR.</Body>}
-              {requests.isLoading ? <Loading /> : requests.isError ? (
-                <ErrorState message={requests.error.message} onRetry={requests.refetch} />
-              ) : requests.data?.length ? requests.data.map((request) => (
-                <Row key={request.id} style={{ gap: spacing.sm, flexWrap: "wrap" }}>
-                  <View style={{ flex: 1 }}>
-                    <Body>{request.name}</Body>
-                    <Label>{request.email} · {request.warehouse_id}</Label>
-                  </View>
-                  <Button title="Review" variant="ghost" onPress={() => { setApprovalPassword(""); setApproval(request) }} />
-                </Row>
-              )) : <Body>No pending requests.</Body>}
+              <Row style={{ gap: spacing.sm, flexWrap: "wrap" }}>
+                <View style={{ flex: 1, minWidth: 180, gap: spacing.xs }}>
+                  <H3>Pending access requests</H3>
+                  <Label style={{ color: colors.brandPrimary }}>{requests.data?.length ?? 0} awaiting review</Label>
+                </View>
+                <Button title="Invite driller" icon="account-plus" onPress={() => setInviteOpen(true)} />
+                <Button title="Refresh" variant="ghost" loading={requests.isFetching} onPress={() => { void refreshRequest() }} />
+              </Row>
+              <Body>Review access requests here. This list refreshes every 15 seconds. Existing account emails do not appear as pending requests.</Body>
+              <View style={{ backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
+                {!compact && (
+                  <Row style={{ padding: spacing.lg, backgroundColor: colors.surfaceTertiary, gap: spacing.md }}>
+                    <Label style={{ flex: 2 }}>Applicant</Label>
+                    <Label style={{ flex: 1 }}>Warehouse</Label>
+                    <Label style={{ width: 140 }}>Action</Label>
+                  </Row>
+                )}
+                {requests.isLoading ? <Loading /> : requests.isError ? (
+                  <ErrorState message={requests.error.message} onRetry={requests.refetch} />
+                ) : requests.data?.length ? requests.data.map((request, index) => (
+                  <Row key={request.id} style={{ padding: spacing.lg, gap: spacing.md, flexWrap: compact ? "wrap" : "nowrap", borderTopWidth: index > 0 || !compact ? 1 : 0, borderColor: colors.border }}>
+                    <View style={{ flex: 2, minWidth: compact ? 180 : 0, gap: spacing.xs }}>
+                      <Body style={{ color: colors.onSurface, fontWeight: "700" }}>{request.name}</Body>
+                      <Body style={{ fontSize: 13 }}>{request.email}</Body>
+                      {compact && <Label>{request.warehouse_id}</Label>}
+                    </View>
+                    {!compact && <Label style={{ flex: 1 }}>{request.warehouse_id}</Label>}
+                    <View style={{ width: 140 }}>
+                      <Button title="Review" variant="ghost" onPress={() => { setApprovalPassword(""); setApproval(request) }} />
+                    </View>
+                  </Row>
+                )) : <View style={{ padding: spacing.xl }}><Body>No pending requests.</Body></View>}
+              </View>
+
             </Card>
           )}
           renderItem={({ item: u }) => (
@@ -115,6 +150,19 @@ export default function Users() {
             </Card>
           )} />
       )}
+      <Sheet visible={inviteOpen} onClose={() => setInviteOpen(false)} testID="invite-driller-sheet">
+        <H3>Invite driller</H3>
+        <Body>Share this invitation link or let the driller scan the QR code. They submit their details and wait for admin approval.</Body>
+        {joinUrl ? (
+          <>
+            {qr.isLoading && <Loading />}
+            {qr.data && <Image source={{ uri: qr.data.data_uri }} accessibilityLabel="Driller invitation QR code" style={{ width: 160, height: 160 }} />}
+            {qr.isError && <ErrorState message={qr.error.message} onRetry={qr.refetch} />}
+            <Text selectable style={{ color: colors.onSurface }}>{joinUrl}</Text>
+            <Button title="Share invite" icon="share-variant" onPress={invite} />
+          </>
+        ) : <Body>Configure the public backend URL before sharing an invitation.</Body>}
+      </Sheet>
       <Sheet visible={Boolean(approval)} onClose={() => { if (!approving) setApproval(null) }} testID="join-approval-sheet">
         <H3>Approve driller</H3>
         <Body>{approval?.name} · {approval?.email} · {approval?.warehouse_id}</Body>
