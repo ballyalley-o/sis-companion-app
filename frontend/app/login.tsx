@@ -23,14 +23,13 @@ const useStyles = makeStyles((c) => ({
   hero            : { minHeight: 220, overflow: "hidden", backgroundColor: c.surfaceSecondary },
   heroInner       : { padding: spacing.xl, gap: spacing.xl },
   shapeField      : { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
-  upperShape      : { position: "absolute", width: "78%", height: "50%", top: "-16%", right: "-20%", borderRadius: 52, backgroundColor: c.surfaceTertiary, transform: [{ rotate: "-24deg" }] },
-  lowerShape      : { position: "absolute", width: "96%", height: "60%", bottom: "-28%", left: "-23%", borderRadius: 64, backgroundColor: c.surface, transform: [{ rotate: "-25deg" }] },
+  upperShape      : { position: "absolute", width: "78%", height: "50%", top: "-16%", right: "-20%", borderRadius: 8, backgroundColor: c.surfaceTertiary, transform: [{ rotate: "-24deg" }] },
+  lowerShape      : { position: "absolute", width: "96%", height: "60%", bottom: "-28%", left: "-23%", borderRadius: 8, backgroundColor: c.surface, transform: [{ rotate: "-25deg" }] },
   ring            : { position: "absolute", width: "56%", aspectRatio: 1, right: "-14%", bottom: "-9%", borderRadius: 999, borderWidth: 1, borderColor: c.borderStrong, opacity: 0.55 },
   desktopTitle    : { fontSize: 64, lineHeight: 68 },
-  logo            : { width: 180, height: 68 },
+  logo            : { width: 96, height: 96 },
   form            : { padding: spacing.xl, gap: spacing.lg },
   demo            : { flex: 1, minHeight: 48, borderRadius: radius.md, borderWidth: 1, borderColor: c.borderStrong, alignItems: "center", justifyContent: "center", backgroundColor: c.surfaceSecondary },
-  stripe          : { height: 6, backgroundColor: c.brandPrimary },
   desktopHero     : { width: "52%", height: "auto", borderRightWidth: 1, borderRightColor: c.border },
   desktopHeroInner: { flex: 1, padding: 48, justifyContent: "space-between", gap: spacing.xxxl },
   desktopPanel    : { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.xxl },
@@ -121,17 +120,12 @@ export default function Login() {
             <View style={s.ring} />
           </View>
           <View style={[s.heroInner, desktop ? s.desktopHeroInner : { paddingTop: insets.top + spacing.xl }]}>
-            <Image source={require("../asset/image/sis-logo.png")} accessibilityLabel="Site Investigation Supply" contentFit="contain" style={s.logo} />
+            <Image source={require("../asset/image/adaptive-icon.png")} accessibilityLabel="Site Investigation Supply" contentFit="contain" style={s.logo} />
             <H1 style={desktop ? s.desktopTitle : undefined}>Companion App</H1>
-            {desktop && <Label>Queensland · New South Wales</Label>}
           </View>
         </View>
-        {!desktop && <View style={s.stripe} />}
         <View testID="login-form-panel" style={desktop ? s.desktopPanel : { alignItems: "center" }}>
         <View style={[s.form, desktop ? s.desktopForm : { width: "100%", maxWidth: 520 }]}>
-          <View style={{ gap: spacing.sm, marginBottom: spacing.sm }}>
-            <H1>Welcome back</H1>
-          </View>
           <Field testID="login-email-input" label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@company.com" autoComplete="email" editable={!busy} />
           <View>
             <Field testID="login-password-input" label="Password" value={pw} onChangeText={setPw} secureTextEntry={!show} placeholder="Enter your password" autoComplete="current-password" editable={!busy} style={{ paddingRight: 64 }} onSubmitEditing={submit} />

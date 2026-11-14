@@ -107,7 +107,7 @@ export default function Users() {
                 <Button title="Refresh" variant="ghost" loading={requests.isFetching} onPress={() => { void refreshRequest() }} />
               </Row>
               <Body>Review access requests here. This list refreshes every 15 seconds. Existing account emails do not appear as pending requests.</Body>
-              <View style={{ backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
+              <View style={{ backgroundColor: colors.surface, borderRadius: 5, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
                 {!compact && (
                   <Row style={{ padding: spacing.lg, backgroundColor: colors.surfaceTertiary, gap: spacing.md }}>
                     <Label style={{ flex: 2 }}>Applicant</Label>
@@ -119,13 +119,13 @@ export default function Users() {
                   <ErrorState message={requests.error.message} onRetry={requests.refetch} />
                 ) : requests.data?.length ? requests.data.map((request, index) => (
                   <Row key={request.id} style={{ padding: spacing.lg, gap: spacing.md, flexWrap: compact ? "wrap" : "nowrap", borderTopWidth: index > 0 || !compact ? 1 : 0, borderColor: colors.border }}>
-                    <View style={{ flex: 2, minWidth: compact ? 180 : 0, gap: spacing.xs }}>
+                    <View style={{ flex: compact ? undefined : 2, width: compact ? "100%" : undefined, minWidth: 0, gap: spacing.xs }}>
                       <Body style={{ color: colors.onSurface, fontWeight: "700" }}>{request.name}</Body>
                       <Body style={{ fontSize: 13 }}>{request.email}</Body>
                       {compact && <Label>{request.warehouse_id}</Label>}
                     </View>
                     {!compact && <Label style={{ flex: 1 }}>{request.warehouse_id}</Label>}
-                    <View style={{ width: 140 }}>
+                    <View style={{ width: compact ? "100%" : 140 }}>
                       <Button title="Review" variant="ghost" onPress={() => { setApprovalPassword(""); setApproval(request) }} />
                     </View>
                   </Row>

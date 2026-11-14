@@ -16,12 +16,12 @@ const useStyles = makeStyles((c) => ({
   h1       : { fontFamily: fonts.display, fontSize: 32, color: c.onSurface, letterSpacing: 0.5, textTransform: "uppercase" },
   h2       : { fontFamily: fonts.display, fontSize: 24, color: c.onSurface, letterSpacing: 0.5, textTransform: "uppercase" },
   h3       : { fontFamily: fonts.displaySemi, fontSize: 20, color: c.onSurface, letterSpacing: 0.3 },
-  body     : { fontFamily: fonts.text, fontSize: 15, color: c.onSurfaceSecondary },
-  label    : { fontFamily: fonts.text, fontSize: 12, color: c.muted, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: "700" },
+  body     : { fontFamily: fonts.text, fontSize: 15, flexShrink: 1, color: c.onSurfaceSecondary },
+  label    : { fontFamily: fonts.text, fontSize: 12, flexShrink: 1, color: c.muted, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: "700" },
   mono     : { fontFamily: fonts.displaySemi, fontSize: 18, color: c.brandPrimary, letterSpacing: 1 },
-  btn      : { minHeight: 56, borderRadius: radius.md, paddingHorizontal: spacing.xl, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
+  btn      : { minHeight: 56, borderRadius: radius.md, paddingHorizontal: spacing.lg, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
   btnLg    : { minHeight: 72 },
-  btnText  : { fontFamily: fonts.display, fontSize: 20, letterSpacing: 1, textTransform: "uppercase" },
+  btnText  : { fontFamily: fonts.display, fontSize: 20, flexShrink: 1, textAlign: "center", letterSpacing: 1, textTransform: "uppercase" },
   card     : { backgroundColor: c.surfaceSecondary, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, padding: spacing.lg },
   pill     : { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, height: 26, borderRadius: radius.sm, alignSelf: "flex-start" },
   pillText : { fontFamily: fonts.text, fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase" },
@@ -209,9 +209,9 @@ export function Header({ title, subtitle, back = true, right }: { title: string;
   return (
     <View style={[s.header, { paddingTop: insets.top + spacing.sm }]}>
       {back && <IconButton testID="header-back-button" icon="arrow-left" onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} />}
-      <View style={{ flex: 1 }}>
-        <H2 numberOfLines={1}>{title}</H2>
-        {subtitle ? <Label numberOfLines={1}>{subtitle}</Label> : null}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <H2 numberOfLines={2}>{title}</H2>
+        {subtitle ? <Label numberOfLines={2}>{subtitle}</Label> : null}
       </View>
       {right}
     </View>
@@ -286,7 +286,9 @@ export function Sheet({ visible, onClose, children, testID }: { visible: boolean
           paddingBottom: insets.bottom + spacing.xl,
           transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [height, 0] }) }],
         }]}>
-          {children}
+          <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{ flexShrink: 1 }} contentContainerStyle={{ gap: spacing.lg }}>
+            {children}
+          </ScrollView>
         </Animated.View>
       </View>
     </Modal>

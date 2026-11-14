@@ -21,7 +21,7 @@ const CONDITIONS = [
 
 const useStyles = makeStyles((c) => ({
   root: { flex: 1, backgroundColor: c.surface },
-  cond: { flex: 1, minHeight: 72, borderRadius: radius.md, borderWidth: 2, alignItems: "center", justifyContent: "center", gap: 4 },
+  cond: { flex: 1, minWidth: 100, minHeight: 72, borderRadius: radius.md, borderWidth: 2, alignItems: "center", justifyContent: "center", gap: 4 },
   photo: { width: 88, height: 88, borderRadius: radius.sm },
   addPhoto: { width: 88, height: 88, borderRadius: radius.sm, borderWidth: 2, borderStyle: "dashed", borderColor: c.borderStrong, alignItems: "center", justifyContent: "center" },
   footer: { backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.divider, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
@@ -125,7 +125,7 @@ export default function EquipmentAction() {
 
         <View style={{ gap: spacing.sm }}>
           <Label>Condition {checkout ? "at checkout" : "on return"}</Label>
-          <Row>
+          <Row style={{ flexWrap: "wrap" }}>
             {CONDITIONS.map((c) => {
               const on = cond === c.value
               const tone = c.value === "good" ? colors.success : c.value === "fair" ? colors.warning : colors.error
