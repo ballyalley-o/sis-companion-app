@@ -151,7 +151,7 @@ export default function Orders() {
 
   return (
     <View style={s.root} testID="orders-screen">
-      <ScrollView contentContainerStyle={s.content}>
+      <ScrollView contentContainerStyle={[s.content, !desktop && { padding: spacing.lg }]}>
         <View style={[s.heading, !desktop && { flexDirection: "column" }]}>
           <View style={{ flex: 1, gap: 4 }}>
             <Label>PROCUREMENT · GOODS IN</Label>
@@ -229,14 +229,14 @@ export default function Orders() {
 
               <View style={[s.tableHeader, !desktop && { display: "none" }]}>
                 <Label style={{ flex: 3 }}>ORDERED ITEM</Label><Label style={{ width: 68, textAlign: "center" }}>ORDERED</Label>
-                <Label style={{ width: 68, textAlign: "center" }}>RECEIVED</Label><Label style={{ width: 126, textAlign: "center" }}>COUNT NOW</Label>
+                <Label style={{ width: 68, textAlign: "center" }}>RECEIVED</Label><Label style={{ width: 140, textAlign: "center" }}>COUNT NOW</Label>
               </View>
               {order.lines.map((line) => {
                 const arrival = arrivals[line.line_id] || { qty: 0, bin_id: bins[0]?.id || "" }
                 const canReceive = !!line.product_id && line.whole_units !== false && line.remaining_qty > 0
                 return (
-                  <View key={line.line_id} testID={`po-line-${line.sku || line.line_id}`} style={[s.tableRow, { flexWrap: desktop ? "nowrap" : "wrap" }]}>
-                    <View style={{ flex: 3, minWidth: 190, gap: 2 }}>
+                  <View key={line.line_id} testID={`po-line-${line.sku || line.line_id}`} style={[s.tableRow, { flexWrap: "wrap" }]}>
+                    <View style={{ flex: desktop ? 3 : undefined, width: desktop ? undefined : "100%", minWidth: 0, gap: 2 }}>
                       <Mono>{line.sku || "NO SKU"}</Mono><Body style={{ color: colors.onSurface, fontWeight: "700" }}>{line.name}</Body>
                       {!line.product_id && <Label style={{ color: colors.warning }}>Link this Zoho item to a local SKU before receiving</Label>}
                       {line.whole_units === false && <Label style={{ color: colors.warning }}>Fractional quantities require receiving review</Label>}
@@ -244,7 +244,7 @@ export default function Orders() {
                     </View>
                     <Body style={{ width: 68, textAlign: "center", fontWeight: "800" }}>{!desktop ? "Ordered " : ""}{line.ordered_qty} {line.unit}</Body>
                     <View style={{ width: 68, alignItems: "center", gap: 3 }}><Body style={{ fontWeight: "800" }}>{line.received_qty}</Body><Label>{line.remaining_qty} left</Label></View>
-                    <View style={{ width: 126, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                    <View style={{ width: 140, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}>
                       <Pressable testID={`po-count-minus-${line.sku}`} disabled={!canReceive} onPress={() => changeCount(line, -1)} style={[s.qtyButton, !canReceive && { opacity: 0.4 }]}><Icon name="minus" size={20} color={colors.onSurface} /></Pressable>
                       <TextInput testID={`po-count-${line.sku}`} style={[s.count, { width: 46 }]} value={String(arrival.qty)} keyboardType="number-pad" editable={canReceive && !busy}
                         onChangeText={(value) => {

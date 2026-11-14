@@ -25,7 +25,7 @@ export default function Kits() {
           ListEmptyComponent={<EmptyState icon="package-variant-plus" title="No rig kits yet" text="Create a standard kit so drillers can request everything in one go" />}
           renderItem={({ item: k }) => (
             <Card testID={`kit-card-${k.id}`} onPress={() => router.push({ pathname: PATH.KIT_DETAIL, params: { id: k.id } })} style={{ gap: spacing.sm }}>
-              <Row style={{ justifyContent: "space-between" }}>
+              <Row style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
                 <Mono>{k.rig_number}</Mono>
                 <Row style={{ gap: spacing.sm }}>
                   <Label>{k.warehouse_id}</Label>

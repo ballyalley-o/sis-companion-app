@@ -63,7 +63,7 @@ export function useTheme(): { scheme: ColorScheme; colors: ThemeColors } {
 export const colors = dark
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48 }
-export const radius = { sm: 6, md: 12, lg: 20, pill: 999 }
+export const radius = { sm: 2, md: 3, lg: 5, pill: 3 }
 export const fonts = {
     display: "BarlowCondensed-Bold",
     displaySemi: "BarlowCondensed-SemiBold",

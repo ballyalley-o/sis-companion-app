@@ -18,8 +18,8 @@ const useStyles = makeStyles((c) => ({
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md, paddingHorizontal: spacing.lg },
   tile: { width: "47.5%", minHeight: 112, borderRadius: radius.md, padding: spacing.lg, justifyContent: "space-between", borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceSecondary },
   tileText: { fontFamily: fonts.display, fontSize: 20, color: c.onSurface, textTransform: "uppercase", letterSpacing: 0.5 },
-  stats: { flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.lg },
-  stat: { flex: 1, backgroundColor: c.surfaceSecondary, borderRadius: radius.md, padding: spacing.md, borderLeftWidth: 4, gap: 2 },
+  stats: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md, paddingHorizontal: spacing.lg },
+  stat: { flex: 1, minWidth: 130, backgroundColor: c.surfaceSecondary, borderRadius: radius.md, padding: spacing.md, borderLeftWidth: 4, gap: 2 },
   statNum: { fontFamily: fonts.display, fontSize: 34, color: c.onSurface },
   section: { paddingHorizontal: spacing.lg, gap: spacing.sm },
   rowItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: c.divider, gap: spacing.md },
@@ -29,7 +29,7 @@ function Tile({ icon, label, onPress, primary, testID, desktop }: { icon: IconNa
   const s = useStyles()
   const { colors } = useTheme()
   return (
-    <Pressable testID={testID} onPress={onPress} style={({ pressed }) => [s.tile, { width: desktop ? "31.5%" : "47.5%" }, primary && { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary }, pressed && { transform: [{ scale: 0.97 }] }]}>
+    <Pressable testID={testID} onPress={onPress} style={({ pressed }) => [s.tile, { width: desktop ? "31%" : "100%", flexBasis: desktop ? "31%" : "46%", flexGrow: 1, maxWidth: desktop ? "33%" : "100%", minWidth: 130 }, primary && { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary }, pressed && { transform: [{ scale: 0.97 }] }]}>
       <Icon name={icon} size={36} color={primary ? colors.onBrandPrimary : colors.brandPrimary} />
       <Body style={[s.tileText, primary && { color: colors.onBrandPrimary }]}>{label}</Body>
     </Pressable>
@@ -130,10 +130,10 @@ export default function Home() {
 
             <View style={s.section}>
               <H3>Equipment</H3>
-              <Row>
-                <Card style={{ flex: 1 }}><Body style={s.statNum}>{d.equipment_available}</Body><Label>Available</Label></Card>
-                <Card style={{ flex: 1 }}><Body style={s.statNum}>{d.equipment_out}</Body><Label>Signed out</Label></Card>
-                <Card style={{ flex: 1 }}><Body style={s.statNum}>{d.my_equipment_out}</Body><Label>With me</Label></Card>
+              <Row style={{ flexWrap: "wrap" }}>
+                <Card style={{ flex: 1, minWidth: 130 }}><Body style={s.statNum}>{d.equipment_available}</Body><Label>Available</Label></Card>
+                <Card style={{ flex: 1, minWidth: 130 }}><Body style={s.statNum}>{d.equipment_out}</Body><Label>Signed out</Label></Card>
+                <Card style={{ flex: 1, minWidth: 130 }}><Body style={s.statNum}>{d.my_equipment_out}</Body><Label>With me</Label></Card>
               </Row>
             </View>
 
