@@ -1,52 +1,52 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from "react"
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
 import {
-  ActivityIndicator, Animated, Modal, Pressable, ScrollView, StyleProp, Text, TextInput, TextInputProps,
-  TextStyle, View, ViewStyle,
+  ActivityIndicator, Animated, Easing, Modal, Platform, Pressable, ScrollView, StyleProp, Text, TextInput, TextInputProps,
+  TextStyle, View, ViewStyle, useWindowDimensions,
 } from "react-native"
-import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons"
-import * as Haptics from "expo-haptics"
-import { useRouter } from "expo-router"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { MaterialDesignIcons }                                       from "@react-native-vector-icons/material-design-icons"
+import * as Haptics                                                  from "expo-haptics"
+import { useRouter }                                                 from "expo-router"
+import { useSafeAreaInsets }                                         from "react-native-safe-area-context"
 import { fonts, makeStyles, radius, spacing, ThemeColors, useTheme } from "design/theme"
 
 export const Icon = MaterialDesignIcons
 export type IconName = React.ComponentProps<typeof MaterialDesignIcons>["name"]
 
 const useStyles = makeStyles((c) => ({
-  h1: { fontFamily: fonts.display, fontSize: 32, color: c.onSurface, letterSpacing: 0.5, textTransform: "uppercase" },
-  h2: { fontFamily: fonts.display, fontSize: 24, color: c.onSurface, letterSpacing: 0.5, textTransform: "uppercase" },
-  h3: { fontFamily: fonts.displaySemi, fontSize: 20, color: c.onSurface, letterSpacing: 0.3 },
-  body: { fontFamily: fonts.text, fontSize: 15, color: c.onSurfaceSecondary },
-  label: { fontFamily: fonts.text, fontSize: 12, color: c.muted, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: "700" },
-  mono: { fontFamily: fonts.displaySemi, fontSize: 18, color: c.brandPrimary, letterSpacing: 1 },
-  btn: { minHeight: 56, borderRadius: radius.md, paddingHorizontal: spacing.xl, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
-  btnLg: { minHeight: 72 },
-  btnText: { fontFamily: fonts.display, fontSize: 20, letterSpacing: 1, textTransform: "uppercase" },
-  card: { backgroundColor: c.surfaceSecondary, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, padding: spacing.lg },
-  pill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, height: 26, borderRadius: radius.sm, alignSelf: "flex-start" },
-  pillText: { fontFamily: fonts.text, fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase" },
-  chip: { height: 40, paddingHorizontal: spacing.lg, borderRadius: radius.pill, borderWidth: 1.5, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  chipText: { fontFamily: fonts.text, fontSize: 14, fontWeight: "700" },
-  input: { minHeight: 56, backgroundColor: c.surfaceTertiary, borderRadius: radius.md, borderWidth: 1.5, borderColor: c.border, paddingHorizontal: spacing.lg, color: c.onSurface, fontFamily: fonts.text, fontSize: 17 },
-  header: { backgroundColor: c.surface, borderBottomWidth: 1, borderBottomColor: c.divider, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.md },
-  iconBtn: { width: 48, height: 48, borderRadius: radius.md, backgroundColor: c.surfaceSecondary, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: c.border },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xl, gap: spacing.md },
-  toast: { position: "absolute", left: spacing.lg, right: spacing.lg, borderRadius: radius.md, padding: spacing.lg, flexDirection: "row", alignItems: "center", gap: spacing.md },
+  h1       : { fontFamily: fonts.display, fontSize: 32, color: c.onSurface, letterSpacing: 0.5, textTransform: "uppercase" },
+  h2       : { fontFamily: fonts.display, fontSize: 24, color: c.onSurface, letterSpacing: 0.5, textTransform: "uppercase" },
+  h3       : { fontFamily: fonts.displaySemi, fontSize: 20, color: c.onSurface, letterSpacing: 0.3 },
+  body     : { fontFamily: fonts.text, fontSize: 15, color: c.onSurfaceSecondary },
+  label    : { fontFamily: fonts.text, fontSize: 12, color: c.muted, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: "700" },
+  mono     : { fontFamily: fonts.displaySemi, fontSize: 18, color: c.brandPrimary, letterSpacing: 1 },
+  btn      : { minHeight: 56, borderRadius: radius.md, paddingHorizontal: spacing.xl, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
+  btnLg    : { minHeight: 72 },
+  btnText  : { fontFamily: fonts.display, fontSize: 20, letterSpacing: 1, textTransform: "uppercase" },
+  card     : { backgroundColor: c.surfaceSecondary, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, padding: spacing.lg },
+  pill     : { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, height: 26, borderRadius: radius.sm, alignSelf: "flex-start" },
+  pillText : { fontFamily: fonts.text, fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase" },
+  chip     : { height: 40, paddingHorizontal: spacing.lg, borderRadius: radius.pill, borderWidth: 1.5, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  chipText : { fontFamily: fonts.text, fontSize: 14, fontWeight: "700" },
+  input    : { minHeight: 56, backgroundColor: c.surfaceTertiary, borderRadius: radius.md, borderWidth: 1.5, borderColor: c.border, paddingHorizontal: spacing.lg, color: c.onSurface, fontFamily: fonts.text, fontSize: 17 },
+  header   : { backgroundColor: c.surface, borderBottomWidth: 1, borderBottomColor: c.divider, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.md },
+  iconBtn  : { width: 48, height: 48, borderRadius: radius.md, backgroundColor: c.surfaceSecondary, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: c.border },
+  center   : { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xl, gap: spacing.md },
+  toast    : { position: "absolute", left: spacing.lg, right: spacing.lg, borderRadius: radius.md, padding: spacing.lg, flexDirection: "row", alignItems: "center", gap: spacing.md },
   toastText: { flex: 1, fontFamily: fonts.text, fontSize: 15, fontWeight: "700" },
-  sheetBg: { flex: 1, backgroundColor: c.overlay, justifyContent: "flex-end" },
-  sheet: { backgroundColor: c.surfaceSecondary, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.xl, gap: spacing.lg, borderTopWidth: 2, borderColor: c.brandPrimary },
-  stepper: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  stepBtn: { width: 52, height: 52, borderRadius: radius.md, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: c.borderStrong },
-  stepVal: { minWidth: 64, height: 52, textAlign: "center", fontFamily: fonts.display, fontSize: 28, color: c.onSurface, backgroundColor: c.surface, borderRadius: radius.md, borderWidth: 1, borderColor: c.border },
+  sheetBg  : { flex: 1, backgroundColor: c.overlay, justifyContent: "flex-end" },
+  sheet    : { backgroundColor: c.surfaceSecondary, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.xl, gap: spacing.lg, borderTopWidth: 2, borderColor: c.brandPrimary },
+  stepper  : { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  stepBtn  : { width: 52, height: 52, borderRadius: radius.md, backgroundColor: c.surfaceTertiary, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: c.borderStrong },
+  stepVal  : { minWidth: 64, height: 52, textAlign: "center", fontFamily: fonts.display, fontSize: 28, color: c.onSurface, backgroundColor: c.surface, borderRadius: radius.md, borderWidth: 1, borderColor: c.border },
 }))
 
-type TP = { children: React.ReactNode; style?: StyleProp<TextStyle>; numberOfLines?: number; testID?: string }
-export const H1 = (p: TP) => <Text {...p} style={[useStyles().h1, p.style]} />
-export const H2 = (p: TP) => <Text {...p} style={[useStyles().h2, p.style]} />
-export const H3 = (p: TP) => <Text {...p} style={[useStyles().h3, p.style]} />
-export const Body = (p: TP) => <Text {...p} style={[useStyles().body, p.style]} />
-export const Label = (p: TP) => <Text {...p} style={[useStyles().label, p.style]} />
-export const Mono = (p: TP) => <Text {...p} style={[useStyles().mono, p.style]} />
+type   TP          = { children: React.ReactNode; style?: StyleProp<TextStyle>; numberOfLines?: number; testID?: string }
+export const H1    = (p: TP) => <Text {...p} style = {[useStyles().h1, p.style]} />
+export const H2    = (p: TP) => <Text {...p} style = {[useStyles().h2, p.style]} />
+export const H3    = (p: TP) => <Text {...p} style = {[useStyles().h3, p.style]} />
+export const Body  = (p: TP) => <Text {...p} style = {[useStyles().body, p.style]} />
+export const Label = (p: TP) => <Text {...p} style = {[useStyles().label, p.style]} />
+export const Mono  = (p: TP) => <Text {...p} style = {[useStyles().mono, p.style]} />
 
 type Variant = "primary" | "secondary" | "success" | "danger" | "ghost"
 function variantColors(c: ThemeColors, v: Variant) {
@@ -106,29 +106,29 @@ export function Card({ children, style, onPress, testID }: { children: React.Rea
 }
 
 const STATUS: Record<string, { key: keyof ThemeColors; on: keyof ThemeColors; icon: IconName; label?: string }> = {
-  pending: { key: "warning", on: "onWarning", icon: "clock-outline" },
-  processing: { key: "info", on: "onInfo", icon: "sync" },
-  approved: { key: "success", on: "onSuccess", icon: "check-bold" },
-  rejected: { key: "error", on: "onError", icon: "close-thick" },
-  cancelled: { key: "surfaceTertiary", on: "onSurfaceTertiary", icon: "cancel" },
-  available: { key: "success", on: "onSuccess", icon: "check-circle" },
+  pending    : { key: "warning", on: "onWarning", icon: "clock-outline" },
+  processing : { key: "info", on: "onInfo", icon: "sync" },
+  approved   : { key: "success", on: "onSuccess", icon: "check-bold" },
+  rejected   : { key: "error", on: "onError", icon: "close-thick" },
+  cancelled  : { key: "surfaceTertiary", on: "onSurfaceTertiary", icon: "cancel" },
+  available  : { key: "success", on: "onSuccess", icon: "check-circle" },
   checked_out: { key: "warning", on: "onWarning", icon: "account-arrow-right", label: "Signed out" },
-  out: { key: "warning", on: "onWarning", icon: "account-arrow-right", label: "Out" },
-  returned: { key: "success", on: "onSuccess", icon: "keyboard-return" },
-  overdue: { key: "error", on: "onError", icon: "alert-octagon" },
+  out        : { key: "warning", on: "onWarning", icon: "account-arrow-right", label: "Out" },
+  returned   : { key: "success", on: "onSuccess", icon: "keyboard-return" },
+  overdue    : { key: "error", on: "onError", icon: "alert-octagon" },
   maintenance: { key: "error", on: "onError", icon: "wrench" },
-  open: { key: "info", on: "onInfo", icon: "clipboard-edit-outline" },
-  completed: { key: "success", on: "onSuccess", icon: "check-all" },
-  prepared: { key: "info", on: "onInfo", icon: "package-variant-closed-check", label: "Packed" },
-  issued: { key: "surfaceTertiary", on: "onSurfaceTertiary", icon: "truck-check" },
-  take: { key: "brandPrimary", on: "onBrandPrimary", icon: "arrow-up-bold" },
-  return: { key: "info", on: "onInfo", icon: "arrow-down-bold" },
-  good: { key: "success", on: "onSuccess", icon: "thumb-up" },
-  fair: { key: "warning", on: "onWarning", icon: "alert" },
-  damaged: { key: "error", on: "onError", icon: "hammer-wrench" },
-  low: { key: "error", on: "onError", icon: "arrow-down-bold-box" },
-  mock: { key: "brandTertiary", on: "onBrandTertiary", icon: "test-tube", label: "Mock mode" },
-  live: { key: "success", on: "onSuccess", icon: "cloud-check", label: "Live" },
+  open       : { key: "info", on: "onInfo", icon: "clipboard-edit-outline" },
+  completed  : { key: "success", on: "onSuccess", icon: "check-all" },
+  prepared   : { key: "info", on: "onInfo", icon: "package-variant-closed-check", label: "Packed" },
+  issued     : { key: "surfaceTertiary", on: "onSurfaceTertiary", icon: "truck-check" },
+  take       : { key: "brandPrimary", on: "onBrandPrimary", icon: "arrow-up-bold" },
+  return     : { key: "info", on: "onInfo", icon: "arrow-down-bold" },
+  good       : { key: "success", on: "onSuccess", icon: "thumb-up" },
+  fair       : { key: "warning", on: "onWarning", icon: "alert" },
+  damaged    : { key: "error", on: "onError", icon: "hammer-wrench" },
+  low        : { key: "error", on: "onError", icon: "arrow-down-bold-box" },
+  mock       : { key: "brandTertiary", on: "onBrandTertiary", icon: "test-tube", label: "Mock mode" },
+  live       : { key: "success", on: "onSuccess", icon: "cloud-check", label: "Live" },
 }
 
 export function StatusPill({ status, label, testID }: { status: string; label?: string; testID?: string }) {
@@ -255,14 +255,40 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry: () 
 
 export function Sheet({ visible, onClose, children, testID }: { visible: boolean; onClose: () => void; children: React.ReactNode; testID?: string }) {
   const s = useStyles()
+  const { colors } = useTheme()
   const insets = useSafeAreaInsets()
+  const { height } = useWindowDimensions()
+  const [mounted, setMounted] = useState(visible)
+  const progress = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    if (visible) setMounted(true)
+    const animation = Animated.timing(progress, {
+      toValue: visible ? 1 : 0,
+      duration: visible ? 360 : 240,
+      easing: Easing.inOut(Easing.cubic),
+      useNativeDriver: Platform.OS !== "web",
+    })
+    animation.start(({ finished }) => {
+      if (finished && !visible) setMounted(false)
+    })
+    return () => animation.stop()
+  }, [visible, progress])
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={s.sheetBg} onPress={onClose}>
-        <Pressable testID={testID} style={[s.sheet, { paddingBottom: insets.bottom + spacing.xl }]} onPress={() => {}}>
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
+      <View style={{ flex: 1, justifyContent: "flex-end" }}>
+        <Animated.View style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: colors.overlay, opacity: progress }}>
+          <Pressable accessibilityLabel="Close dialog" onPress={onClose} style={{ flex: 1 }} />
+        </Animated.View>
+        <Animated.View testID={testID} accessibilityViewIsModal style={[s.sheet, {
+          maxHeight: height - insets.top,
+          paddingBottom: insets.bottom + spacing.xl,
+          transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [height, 0] }) }],
+        }]}>
           {children}
-        </Pressable>
-      </Pressable>
+        </Animated.View>
+      </View>
     </Modal>
   )
 }

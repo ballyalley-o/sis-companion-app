@@ -1,14 +1,15 @@
-import { useEffect, useState }                                 from "react"
-import { GLOBAL }                                              from 'config/global.config'
-import { Platform, Pressable, useWindowDimensions, View }      from "react-native"
-import { Image }                                               from "expo-image"
-import { useLocalSearchParams, useRouter }                     from "expo-router"
-import { KeyboardAwareScrollView }                             from "react-native-keyboard-controller"
-import { useSafeAreaInsets }                                   from "react-native-safe-area-context"
-import { PATH }                                                from 'route/path'
-import { useAuth }                                             from "state/auth"
-import { Body, Button, Field, H1, Icon, Label, Row, useToast } from "component/ui"
-import { makeStyles, radius, spacing, useTheme }               from "design/theme"
+import { useEffect, useState }                                     from "react"
+import { GLOBAL }                                                  from 'config/global.config'
+import { Linking, Platform, Pressable, useWindowDimensions, View } from "react-native"
+import { Image }                                                   from "expo-image"
+import { useLocalSearchParams, useRouter }                         from "expo-router"
+import { KeyboardAwareScrollView }                                 from "react-native-keyboard-controller"
+import { useSafeAreaInsets }                                       from "react-native-safe-area-context"
+import { publicJoinUrl }                                           from "lib/api"
+import { PATH }                                                    from 'route/path'
+import { useAuth }                                                 from "state/auth"
+import { Body, Button, Field, H1, Icon, Label, Row, useToast }     from "component/ui"
+import { makeStyles, radius, spacing, useTheme }                   from "design/theme"
 
 
 const DEMO = GLOBAL.ENABLE_DEMO_ACCOUNTS === "true" ? [
@@ -43,6 +44,7 @@ export default function Login() {
   const { width, height }                = useWindowDimensions()
   const desktop                          = Platform.OS === "web" && width >= 960
   const { login, loginWithGoogle, user } = useAuth()
+  const joinUrl = publicJoinUrl
   const toast                            = useToast()
   const router                           = useRouter()
   const { returnTo }                     = useLocalSearchParams<{ returnTo?: string }>()
@@ -128,9 +130,7 @@ export default function Login() {
         <View testID="login-form-panel" style={desktop ? s.desktopPanel : { alignItems: "center" }}>
         <View style={[s.form, desktop ? s.desktopForm : { width: "100%", maxWidth: 520 }]}>
           <View style={{ gap: spacing.sm, marginBottom: spacing.sm }}>
-            {/* <Label style={{ color: colors.brandPrimary }}>Your warehouse workspace</Label> */}
             <H1>Welcome back</H1>
-            {/* <Body>Sign in to manage your day's work.</Body> */}
           </View>
           <Field testID="login-email-input" label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@company.com" autoComplete="email" editable={!busy} />
           <View>
@@ -140,6 +140,18 @@ export default function Login() {
             </Pressable>
           </View>
           <Button testID="login-submit-button" title="Sign in" icon="login" large={!desktop} loading={busy} onPress={submit} />
+          {joinUrl && (
+            <View style={{ gap: spacing.sm, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border }}>
+              <Button
+                testID="login-request-access-button"
+                title="Request access"
+                variant="ghost"
+                onPress={() => {
+                  Linking.openURL(joinUrl).catch(() => toast("Could not open request form", "error"))
+                }}
+              />
+            </View>
+          )}
           {Platform.OS === "web" && googleClientId && <Row style={{ gap: spacing.md }}>
             <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
             <Label>or</Label>
