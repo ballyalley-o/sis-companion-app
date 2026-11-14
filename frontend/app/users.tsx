@@ -7,7 +7,7 @@ import { useSafeAreaInsets }                                                    
 import { api, publicJoinUrl }                                                                                                    from "lib/api"
 import { useApi }                                                                                                                from "lib/hook"
 import { Body, Button, Card, Chip, ErrorState, Field, H3, Header, IconButton, Label, Loading, Row, Sheet, StatusPill, useToast } from "component/ui"
-import { makeStyles, spacing, useTheme }                                                                                         from "design/theme"
+import { makeStyles, radius, spacing, useTheme }                                                                                         from "design/theme"
 
 const useStyles = makeStyles((c) => ({ root: { flex: 1, backgroundColor: c.surface } }))
 
@@ -107,7 +107,7 @@ export default function Users() {
                 <Button title="Refresh" variant="ghost" loading={requests.isFetching} onPress={() => { void refreshRequest() }} />
               </Row>
               <Body>Review access requests here. This list refreshes every 15 seconds. Existing account emails do not appear as pending requests.</Body>
-              <View style={{ backgroundColor: colors.surface, borderRadius: 5, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
+              <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
                 {!compact && (
                   <Row style={{ padding: spacing.lg, backgroundColor: colors.surfaceTertiary, gap: spacing.md }}>
                     <Label style={{ flex: 2 }}>Applicant</Label>
