@@ -9,7 +9,7 @@ import { api, uid } from "lib/api"
 import { useAuth } from "state/auth"
 import { useApi } from "lib/hook"
 import { CommonItems, DidYouMean } from "component/suggest"
-import { Body, Button, Card, ChipRow, Field, Header, Icon, IconButton, Label, Mono, Row, Stepper, useToast } from "component/ui"
+import { Body, Button, Card, ChipRow, ErrorState, Field, H3, Header, Loading, Sheet, Icon, IconButton, Label, Mono, Row, Stepper, useToast } from "component/ui"
 import { makeStyles, radius, spacing, useTheme } from "design/theme"
 
 type Line = { product_id: string; sku: string; name: string; unit: string; bin_id: string; bin_code: string; qty: number; avail: number }
@@ -38,6 +38,9 @@ export default function NewRequest() {
   const [notes, setNotes] = useState("")
   const [lines, setLines] = useState<Line[]>([])
   const [search, setSearch] = useState("")
+  const [unlocated, setUnlocated] = useState<any>(null)
+  const [binSearch, setBinSearch] = useState("")
+  const targetBins = useApi<any[]>(unlocated ? `/bins?warehouse_id=${wh}` : null)
   const [busy, setBusy] = useState(false)
   const clientRef = useRef(uid())
   const drillers = useApi<any[]>("/drillers")
@@ -69,8 +72,8 @@ export default function NewRequest() {
     const next = [...lines]
     const skipped: string[] = []
     for (const it of k.items) {
-      if (!it.bin_id || it.avail <= 0) { skipped.push(it.sku); continue }
-      const qty = Math.min(it.qty, it.avail)
+      if (!it.bin_id) { skipped.push(it.sku); continue }
+      const qty = it.qty
       if (qty < it.qty) skipped.push(`${it.sku} (${qty}/${it.qty})`)
       const i = next.findIndex((l) => l.product_id === it.product_id && l.bin_id === it.bin_id)
       const line = { product_id: it.product_id, sku: it.sku, name: it.name, unit: it.unit, bin_id: it.bin_id, bin_code: it.bin_code, qty, avail: it.avail }
@@ -85,8 +88,6 @@ export default function NewRequest() {
     if (!driller) return toast("Select the driller name", "error")
     if (!rig) return toast("Select a rig number", "error")
     if (!lines.length) return toast("Add at least one item", "error")
-    const over = lines.find((l) => type === "take" && l.qty > l.avail)
-    if (over) return toast(`Only ${over.avail} ${over.unit} of ${over.sku} in ${over.bin_code}`, "error")
     setBusy(true)
     try {
       const r = await api("/requests", { method: "POST", body: {
@@ -167,7 +168,8 @@ export default function NewRequest() {
                 </View>
                 <IconButton testID={`request-line-remove-${l.sku}`} icon="trash-can-outline" onPress={() => setLines(lines.filter((_, j) => j !== i))} />
               </Row>
-              <Stepper testID={`request-line-qty-${l.sku}`} value={l.qty} max={type === "take" ? Math.max(1, l.avail) : 9999}
+              {type === "take" && l.qty > l.avail && <Body style={{ color: colors.warning }}>Selected bin is short by {l.qty - l.avail}. Warehouse staff will review stock and arrange a purchase if needed.</Body>}
+              <Stepper testID={`request-line-qty-${l.sku}`} value={l.qty} max={9999}
                 onChange={(n) => setLines(lines.map((x, j) => (j === i ? { ...x, qty: n } : x)))} />
             </Card>
           ))}
@@ -175,7 +177,7 @@ export default function NewRequest() {
             <CommonItems wh={wh} rig={rig || undefined} onPick={(prod) => {
               const locs = (prod.locations || []).filter((l: any) => l.warehouse_id === wh)
               const loc = type === "take" ? [...locs].sort((a: any, b: any) => b.qty - a.qty)[0] : locs[0]
-              if (!loc || (type === "take" && loc.qty <= 0)) return toast(`No ${prod.sku} on hand in ${wh}`, "error")
+              if (!loc) return toast(`No ${prod.sku} on hand in ${wh}`, "error")
               addLine(prod, loc)
             }} />
           )}
@@ -184,7 +186,7 @@ export default function NewRequest() {
           {(results.data || []).map((prod) => (
             <View key={prod.id} style={{ gap: spacing.xs }}>
               <Body style={{ color: colors.onSurface, fontWeight: "700" }}>{prod.sku} · {prod.name}</Body>
-              {prod.locations.length === 0 && <Label>No bin location in {wh}</Label>}
+              {prod.locations.length === 0 && <Button title="Select requested bin" variant="secondary" onPress={() => { setBinSearch(""); setUnlocated(prod) }} />}
               {prod.locations.map((loc: any) => (
                 <Pressable key={loc.bin_id} testID={`request-add-${prod.sku}-${loc.bin_code}`} style={s.result} onPress={() => addLine(prod, loc)}>
                   <Body>Bin {loc.bin_code} · {loc.qty} {prod.unit}</Body>
@@ -198,6 +200,18 @@ export default function NewRequest() {
 
         <Field testID="request-notes-input" label="Notes (optional)" value={notes} onChangeText={setNotes} multiline placeholder="Hole ID, job number, reason…" />
       </KeyboardAwareScrollView>
+      <Sheet visible={Boolean(unlocated)} onClose={() => setUnlocated(null)}>
+        <H3>Select requested bin</H3>
+        <Body>{unlocated?.sku} has no stock location in {wh}. Choose where the arriving item should be received.</Body>
+        <Field label="Find bin" value={binSearch} onChangeText={setBinSearch} placeholder="Section or bin code" />
+        {targetBins.isLoading ? <Loading /> : targetBins.isError ? <ErrorState message={targetBins.error.message} onRetry={targetBins.refetch} /> : <>
+          {(targetBins.data || []).filter(bin => bin.code.toLowerCase().includes(binSearch.toLowerCase())).slice(0, 30).map(bin => <Button key={bin.id} title={bin.code} variant="secondary" onPress={() => {
+            addLine(unlocated, { bin_id: bin.id, bin_code: bin.code, qty: 0 })
+            setUnlocated(null)
+          }} />)}
+          {!targetBins.data?.length && <Body>No active bins in this warehouse. Ask a manager to add one.</Body>}
+        </>}
+      </Sheet>
       <KeyboardStickyView offset={{ opened: insets.bottom }}>
         <View style={[s.footer, { paddingBottom: insets.bottom + spacing.md }]}>
           <Button testID="request-submit-button" large title={`Submit ${type} request`} icon="send" loading={busy} onPress={submit} />

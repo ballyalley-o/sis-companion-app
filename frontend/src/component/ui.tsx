@@ -107,6 +107,7 @@ export function Card({ children, style, onPress, testID }: { children: React.Rea
 
 const STATUS: Record<string, { key: keyof ThemeColors; on: keyof ThemeColors; icon: IconName; label?: string }> = {
   pending    : { key: "warning", on: "onWarning", icon: "clock-outline" },
+  awaiting_purchase: { key: "warning", on: "onWarning", icon: "cart-outline", label: "Awaiting purchase" },
   processing : { key: "info", on: "onInfo", icon: "sync" },
   approved   : { key: "success", on: "onSuccess", icon: "check-bold" },
   rejected   : { key: "error", on: "onError", icon: "close-thick" },
