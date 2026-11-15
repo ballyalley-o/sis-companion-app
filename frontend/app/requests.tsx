@@ -31,7 +31,7 @@ export default function Requests() {
         right={<IconButton testID="requests-new-button" icon="plus" onPress={() => router.push(PATH.REQUEST_NEW)} />} />
       <View style={s.chips}>
         <ChipRow testIDPrefix="requests-filter" value={status} onChange={setStatus}
-          options={[{ label: "Pending", value: "pending" }, { label: "Approved", value: "approved" }, { label: "Rejected", value: "rejected" }, { label: "All", value: "all" }]} />
+          options={[{ label: "Pending", value: "pending" }, { label: "Awaiting purchase", value: "awaiting_purchase" }, { label: "Approved", value: "approved" }, { label: "Rejected", value: "rejected" }, { label: "All", value: "all" }]} />
       </View>
       {res.isLoading ? <Loading text="Fetching requests…" /> : res.isError ? <ErrorState message={(res.error as Error).message} onRetry={res.refetch} /> : (
         <FlatList

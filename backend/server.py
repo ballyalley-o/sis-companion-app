@@ -1,4 +1,5 @@
 import logging
+from purchase_shortage import purchase_shortage
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -621,16 +622,15 @@ async def create_request(body: StockRequestIn, user=Depends(current_user)):
     existing = await db.stock_requests.find_one({"client_ref": body.client_ref}, NOPROJ)
     if existing:  # idempotent resubmission (e.g. flaky network retry)
         return existing
+    ensure_wh_access(user, body.warehouse_id)
+    if len({(it.product_id, it.bin_id) for it in body.items}) != len(body.items):
+        raise HTTPException(422, "Combine repeated product and bin lines")
     items = []
     for it in body.items:
         p = await db.products.find_one({"id": it.product_id}, NOPROJ)
         b = await db.bins.find_one({"id": it.bin_id, "warehouse_id": body.warehouse_id}, NOPROJ)
         if not p or not b:
             raise HTTPException(400, "Invalid product or bin for this warehouse")
-        if body.type == "take":
-            s = await db.stock.find_one({"product_id": p["id"], "bin_id": b["id"]}, NOPROJ)
-            if not s or s["qty"] < it.qty:
-                raise HTTPException(400, f"Only {s['qty'] if s else 0} {p['unit']} of {p['sku']} in bin {b['code']}")
         items.append({"product_id": p["id"], "sku": p["sku"], "name": p["name"], "unit": p["unit"],
                       "bin_id": b["id"], "bin_code": b["code"], "qty": it.qty})
     doc = {"id": nid(), "number": f"SR-{now().strftime('%y%m%d')}-{uuid.uuid4().hex[:4].upper()}", "type": body.type,
@@ -668,11 +668,70 @@ async def get_request(rid: str, user=Depends(current_user)):
     if user["role"] == "driller" and r["submitted_by_id"] != user["id"]:
         raise HTTPException(403, "Not your request")
     ensure_wh_access(user, r["warehouse_id"])
+    if r["type"] == "take":
+        stock = await db.stock.find({"warehouse_id": r["warehouse_id"], "product_id": {"$in": [it["product_id"] for it in r["items"]]}}, NOPROJ).to_list(10000)
+        r["shortage"] = purchase_shortage(r["items"], stock)
     return r
 
 
 class DecisionIn(BaseModel):
     note: str = ""
+
+
+@api.post("/requests/{rid}/purchase")
+async def request_purchase(rid: str, user=Depends(roles("manager", "admin"))):
+    r = await get_request(rid, user)
+    if r.get("purchase"):
+        return r
+    if r["type"] != "take" or r["status"] != "pending":
+        raise HTTPException(409, "Only pending take requests can request a purchase")
+    if not r.get("shortage"):
+        raise HTTPException(409, "No warehouse shortage. Use available stock or review the selected bins.")
+    draft = {"number": f"PUR-{r['number']}", "status": "draft", "items": r["shortage"],
+             "created_at": iso(), "created_by": user["name"], "zoho_stock_changed": False}
+    updated = await db.stock_requests.update_one(
+        {"id": rid, "status": "pending", "purchase": {"$exists": False}},
+        {"$set": {"status": "awaiting_purchase", "purchase": draft},
+         "$push": {"history": {"at": iso(), "status": "awaiting_purchase", "by": user["name"],
+                                "note": f"Purchase draft {draft['number']} prepared for shortage only"}}})
+    if not updated.modified_count:
+        raise HTTPException(409, "Request changed. Refresh before continuing.")
+    await audit(user, "request.purchase", "stock_request", rid, {"number": draft["number"]})
+    await notify(f"Request {r['number']} awaiting purchase", "The warehouse is arranging the missing stock.",
+                 kind="request", user_id=r["submitted_by_id"], ref={"type": "request", "id": rid})
+    return await get_request(rid, user)
+
+
+class PurchaseLinkIn(BaseModel):
+    reference: str = Field(min_length=2, max_length=100)
+
+
+@api.post("/requests/{rid}/purchase/link")
+async def link_request_purchase(rid: str, body: PurchaseLinkIn, user=Depends(roles("manager", "admin"))):
+    r = await get_request(rid, user)
+    if r["status"] != "awaiting_purchase":
+        raise HTTPException(409, "Request is not awaiting a purchase")
+    order = await lookup_purchase_order(body.reference, user)
+    if order.get("status", "").lower() in ("cancelled", "canceled", "void"):
+        raise HTTPException(409, "This purchase order is cancelled")
+    if order["mode"] != "live":
+        raise HTTPException(409, "Link a real Zoho PO in Live mode; demo orders cannot fulfil this request")
+    if r["purchase"].get("zoho_id"):
+        if r["purchase"]["zoho_id"] == order["id"]:
+            return r
+        raise HTTPException(409, "A purchase order is already linked")
+    for item in r["purchase"]["items"]:
+        quantity = sum(line["ordered_qty"] for line in order["lines"] if line["product_id"] == item["product_id"])
+        if quantity < item["qty"]:
+            raise HTTPException(409, f"PO does not cover the purchase quantity for {item['sku']}")
+    result = await db.stock_requests.update_one(
+        {"id": rid, "status": "awaiting_purchase", "purchase.zoho_id": {"$exists": False}},
+        {"$set": {"purchase.zoho_id": order["id"], "purchase.zoho_number": order["number"], "purchase.status": "linked"},
+         "$push": {"history": {"at": iso(), "status": "awaiting_purchase", "by": user["name"], "note": f"Linked Zoho PO {order['number']}"}}})
+    if not result.modified_count:
+        raise HTTPException(409, "Request changed. Refresh before continuing.")
+    await audit(user, "request.purchase_link", "stock_request", rid, {"zoho_id": order["id"]})
+    return await get_request(rid, user)
 
 
 @api.post("/requests/{rid}/approve")
@@ -681,8 +740,12 @@ async def approve_request(rid: str, body: DecisionIn, user=Depends(roles("manage
     if not r:
         raise HTTPException(404, "Request not found")
     ensure_wh_access(user, r["warehouse_id"])
-    # Lock: only one approver can move pending -> processing
-    locked = await db.stock_requests.find_one_and_update({"id": rid, "status": "pending"}, {"$set": {"status": "processing"}})
+    if r["status"] == "awaiting_purchase" and not r.get("purchase", {}).get("zoho_id"):
+        raise HTTPException(409, "Link the approved Zoho PO before fulfilling this purchase request")
+    if r["status"] not in ("pending", "awaiting_purchase"):
+        raise HTTPException(409, f"Request is already {r['status']}")
+    # Compare the reviewed state so a concurrent purchase transition cannot be bypassed.
+    locked = await db.stock_requests.find_one_and_update({"id": rid, "status": r["status"]}, {"$set": {"status": "processing"}})
     if not locked:
         raise HTTPException(409, f"Request is already {r['status']}")
     sign = -1 if r["type"] == "take" else 1
@@ -706,7 +769,7 @@ async def approve_request(rid: str, body: DecisionIn, user=Depends(roles("manage
                 raise HTTPException(409, f"Stock changed during approval for {it['sku']}; please retry")
             applied.append(it)
     except HTTPException:
-        await db.stock_requests.update_one({"id": rid}, {"$set": {"status": "pending"}})
+        await db.stock_requests.update_one({"id": rid}, {"$set": {"status": r["status"]}})
         raise
     await db.stock_requests.update_one({"id": rid}, {"$set": {
         "status": "approved", "decided_at": iso(), "decided_by": user["name"], "decision_note": body.note,
