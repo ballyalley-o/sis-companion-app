@@ -1,4 +1,4 @@
-# SIS Companion / DrillStock Pro
+# SIS Companion
 
 Expo Router and React Native Web frontend with a FastAPI and MongoDB backend. The frontend runs as a PWA-capable web app; the backend can run as a standalone container without Emergent runtime services.
 
@@ -10,6 +10,89 @@ Expo Router and React Native Web frontend with a FastAPI and MongoDB backend. Th
 4. Open `http://localhost:8081`.
 
 The API is available at `http://localhost:8000`. Local demo accounts are created only when `APP_ENV=development` and `SEED_DEMO_DATA=true`.
+
+## Stock requests and purchase shortages
+
+Drillers submit take or return requests. Managers review requests within their assigned warehouse; administrators can review across warehouses.
+
+### Normal request
+
+1. Select the warehouse, driller, rig, products, requested bins, and quantities.
+2. Submit the request. Its status starts as **Pending**.
+3. A manager or administrator reviews and approves or rejects it.
+4. Approval checks the selected bins and issues the complete request. Normal approval retains the existing stock-adjustment behaviour for the configured Zoho mode.
+
+### When stock is insufficient
+
+1. Submit the full quantity needed. The form warns when the selected bin is short rather than blocking submission. Products without a stock location require a requested receiving bin.
+2. Open the request detail and review **Stock shortage**. SIS combines demand for each product and checks available stock across the selected warehouse, including other bins.
+3. A manager or administrator selects **Request purchase** for the missing quantity.
+4. SIS creates an internal purchase draft with reference `PUR-<stock request number>`, changes the request to **Awaiting purchase**, records the action in history, and creates an in-app notification for the requester.
+5. An authorised person creates, approves, and sends the actual PO in Zoho outside SIS.
+6. Enter its number or reference in **Zoho PO reference** and select **Link Zoho PO**. The existing read-only lookup checks product quantities. Demo and cancelled orders cannot be linked.
+7. Receive the delivery through **Orders**, putting stock into the requested bins.
+8. Return to the original request and approve it after replenishment. Requests awaiting purchase require a linked Zoho PO and sufficient stock in their selected bins.
+
+Example: **10 requested − 6 available across the warehouse = 4 to purchase**. If enough stock exists in another bin, arrange that stock in the requested bins instead of purchasing more.
+
+Use the **Awaiting purchase** filter in the request list to monitor outstanding purchases.
+
+### Current implementation limits
+
+- **The purchase draft is an internal SIS record, not a PO created or sent in Zoho.** Direct creation needs additional Zoho write access and supplier/pricing selection.
+- Draft quantities capture availability at review time. They do not reserve stock or automatically recalculate an existing draft.
+- The original request is fulfilled in full after replenishment; partial issues are not implemented by this flow.
+- PO linking checks product quantities, not supplier approval, prices, or quantities allocated to other requests.
+- Purchase-order receiving updates local SIS stock and history without changing Zoho stock or the Zoho PO. Normal request approval retains its existing Zoho adjustment behaviour.
+- Receiving does not automatically approve the original request. Warehouse staff perform the final review.
+
+### API reference
+
+All routes require authentication. Purchase actions require manager or administrator access and enforce warehouse permissions.
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| POST | `/api/requests` | Submit a take or return request, including quantities above available stock. |
+| GET | `/api/requests/{id}` | Read a request and its current warehouse shortage. |
+| POST | `/api/requests/{id}/purchase` | Prepare the shortage-only purchase draft. |
+| POST | `/api/requests/{id}/purchase/link` | Link a Zoho PO with a body such as `{"reference":"PO-10452"}`. |
+| POST | `/api/requests/{id}/approve` | Fulfil the full request after stock checks. |
+| GET | `/api/requests?status=awaiting_purchase` | List purchases within the caller's request access scope. |
+
+## Verification
+
+The frontend Docker build uses Node.js 22 and the backend uses Python 3.12. With frontend dependencies installed, run from the repository root:
+
+```sh
+node frontend/node_modules/typescript/bin/tsc --noEmit -p frontend/tsconfig.json
+node frontend/test/test-api-base.cjs
+node frontend/test/test-bin-label.cjs
+node frontend/test/test-warehouse-map.cjs
+PYTHONPATH=backend python3 -m unittest discover -s backend/tests -p test_purchase_shortage.py -v
+```
+
+The shortage tests cover calculations across bins, repeated products, zero stock, duplicate purchase actions, invalid states, and competing updates. These isolated tests use database stubs; they do not verify live MongoDB or Zoho behaviour.
+
+To build the browser app:
+
+```sh
+cd frontend
+npx expo export --platform web
+```
+
+Device layouts, camera access, and live integration behaviour need separate acceptance checks.
+
+## Local operation notes
+
+Stop the Compose instance from the same checkout:
+
+```sh
+docker compose down
+```
+
+This preserves database and upload volumes. Closing the browser does not stop containers.
+
+For a phone on the same network, use the computer's LAN address rather than `localhost`. Set `EXPO_PUBLIC_BACKEND_URL` to that computer's API origin and include the exact frontend origin in `CORS_ORIGINS`, then rebuild. Frontend environment variables are embedded at build time. Browser camera features may require HTTPS.
 
 ## Deploy
 
