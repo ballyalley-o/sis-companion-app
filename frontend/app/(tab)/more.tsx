@@ -1,3 +1,4 @@
+import { VersionInfo } from "component/version-info"
 import { PATH } from 'route/path'
 import { Pressable, ScrollView, View } from "react-native"
 import { useRouter, Href } from "expo-router"
@@ -60,6 +61,7 @@ export default function More() {
           </Pressable>
         ))}
         <Button testID="logout-button" title="Sign out" icon="logout" variant="secondary" onPress={async () => { await logout(); router.replace(PATH.LOGIN) }} style={{ marginTop: spacing.md }} />
+        <VersionInfo />
       </ScrollView>
     </View>
   )

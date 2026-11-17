@@ -1,3 +1,4 @@
+import { VersionInfo } from "component/version-info"
 import { useEffect, useState }                                     from "react"
 import { GLOBAL }                                                  from 'config/global.config'
 import { Linking, Platform, Pressable, useWindowDimensions, View } from "react-native"
@@ -167,6 +168,7 @@ export default function Login() {
               ))}
             </Row>
           </>}
+          <VersionInfo compact />
         </View>
         </View>
       </KeyboardAwareScrollView>
