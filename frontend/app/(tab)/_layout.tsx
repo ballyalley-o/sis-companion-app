@@ -1,25 +1,26 @@
-import { PATH } from 'route/path'
-import { Image } from "expo-image"
-import { Redirect, Tabs, useRouter } from "expo-router"
-import { NativeTabs } from "expo-router/unstable-native-tabs"
 import { Platform, Pressable, useWindowDimensions, View } from "react-native"
-import { useAuth } from "state/auth"
-import { usesNativeTab } from "config/navigation"
-import { Body, Icon, Label, Loading } from "component/ui"
-import { fonts, makeStyles, spacing, useTheme } from "design/theme"
+import { Image }                                          from "expo-image"
+import { Redirect, Tabs, useRouter }                      from "expo-router"
+import { NativeTabs }                                     from "expo-router/unstable-native-tabs"
+import { usesNativeTab }                                  from "config/navigation"
+import { useAuth }                                        from "state/auth"
+import { PATH }                                           from 'route/path'
+import { VersionInfo }                                    from "component/version-info"
+import { Body, Icon, Label, Loading }                     from "component/ui"
+import { fonts, makeStyles, spacing, useTheme }           from "design/theme"
 
 const sidebarStyles = makeStyles((c) => ({
-  root: { width: 248, height: "100%", flexGrow: 0, flexShrink: 0, backgroundColor: c.surfaceSecondary, borderRightWidth: 1, borderRightColor: c.border, padding: spacing.lg, gap: spacing.xl },
+  root : { width: 248, height: "100%", flexGrow: 0, flexShrink: 0, backgroundColor: c.surfaceSecondary, borderRightWidth: 1, borderRightColor: c.border, padding: spacing.lg, gap: spacing.xl },
   brand: { paddingVertical: spacing.md, paddingHorizontal: spacing.sm, flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  nav: { gap: 6 },
-  item: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: spacing.md, paddingHorizontal: spacing.md, borderRadius: 6 },
+  nav  : { gap: 6 },
+  item : { minHeight: 48, flexDirection: "row", alignItems: "center", gap: spacing.md, paddingHorizontal: spacing.md, borderRadius: 6 },
 }))
 
 function DesktopSidebar({ state, descriptors, navigation, user }: any) {
-  const router = useRouter()
-  const s = sidebarStyles()
+  const router     = useRouter()
+  const s          = sidebarStyles()
   const { colors } = useTheme()
-  const items = state.routes.filter((route: any) => descriptors[route.key]?.options?.href !== null
+  const items      = state.routes.filter((route: any) => descriptors[route.key]?.options?.href !== null
     && !(user?.role === "driller" && descriptors[route.key]?.options?.title === "Orders"))
   return (
     <View style={s.root}>
@@ -47,7 +48,9 @@ function DesktopSidebar({ state, descriptors, navigation, user }: any) {
           <Body style={{ color: colors.onSurfaceSecondary, fontWeight: "600", fontSize: 14 }}>Warehouse map</Body>
         </Pressable>
       </View>
-      <View style={{ marginTop: "auto", padding: spacing.sm }}><Label>QLD · NSW STOCK OPERATIONS</Label></View>
+      <View style={{ marginTop: "auto", padding: spacing.sm, gap: spacing.sm }}>
+        <Label>STOCK OPERATIONS</Label>
+        <VersionInfo compact /></View>
     </View>
   )
 }
