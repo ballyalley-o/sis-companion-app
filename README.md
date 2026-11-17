@@ -103,3 +103,41 @@ Zoho integration remains in mock mode unless an administrator explicitly configu
 ## Documentation
 
 The production engineering documents and roadmap are in [`documentation/`](documentation/README.md).
+
+
+## Release version and deployment identity
+
+The frontend package version in `frontend/package.json` is the release version. Expo's dynamic configuration reads that same value, so the web and native configuration use one version source.
+
+The app displays its version on **More**, the **login screen**, and the **desktop sidebar**. For example, `v1.0.0 · a1b2c3d` identifies both the release and source revision. `modified` means the exported working tree included uncommitted changes; `unidentified build` means no revision was supplied or available. The More footer also shows the UTC build timestamp embedded during export.
+
+### Build metadata
+
+- Local Expo builds read the current Git revision and working-tree state.
+- Vercel builds use `VERCEL_GIT_COMMIT_SHA` when available.
+- Docker builds need `BUILD_COMMIT` and `BUILD_DIRTY` passed through Compose because the frontend build context does not contain Git metadata:
+
+  ```sh
+  export BUILD_COMMIT="$(git rev-parse HEAD)"
+  export BUILD_DIRTY=false
+  if [ -n "$(git status --porcelain)" ]; then export BUILD_DIRTY=true; fi
+  docker compose up --build
+  ```
+
+The label describes the **frontend artifact being viewed**, not the separately deployed backend. Existing hosted exports will show the label only after they are rebuilt and deployed. Building locally does not update a hosted deployment.
+
+### Change the release version
+
+From the frontend directory, use semantic versioning:
+
+```sh
+npm version patch --no-git-tag-version
+```
+
+Use `patch` for fixes, `minor` for compatible features, or `major` for breaking changes. This updates `package.json` and its npm lockfile. Review and commit the release changes before building a clean deployment. The Git revision distinguishes multiple builds of the same release number.
+
+Validate metadata generation with:
+
+```sh
+node frontend/test/test-release.cjs
+```
