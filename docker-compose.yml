@@ -36,6 +36,8 @@ services:
     build:
       context: ./frontend
       args:
+        BUILD_COMMIT: ${BUILD_COMMIT:-}
+        BUILD_DIRTY: ${BUILD_DIRTY:-false}
         EXPO_PUBLIC_BACKEND_URL: ${EXPO_PUBLIC_BACKEND_URL:-http://localhost:8000}
         EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${EXPO_PUBLIC_GOOGLE_CLIENT_ID:-}
         EXPO_PUBLIC_ENABLE_DEMO_ACCOUNTS: ${EXPO_PUBLIC_ENABLE_DEMO_ACCOUNTS:-false}
