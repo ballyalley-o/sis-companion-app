@@ -1,0 +1,74 @@
+[
+  {
+    "slug": "start",
+    "title": "Start here",
+    "group": "Getting started",
+    "description": "Learn the workspace and choose a guide for your role."
+  },
+  {
+    "slug": "access",
+    "title": "Access & sign-in",
+    "group": "Getting started",
+    "description": "Request an account and understand the two access gates."
+  },
+  {
+    "slug": "stock-request",
+    "title": "Request stock",
+    "group": "Stock & purchasing",
+    "description": "Submit a complete request, including quantities that may need purchasing."
+  },
+  {
+    "slug": "approval",
+    "title": "Review & approve",
+    "group": "Stock & purchasing",
+    "description": "Review warehouse requests and understand when stock is issued."
+  },
+  {
+    "slug": "purchasing",
+    "title": "Shortage purchases",
+    "group": "Stock & purchasing",
+    "description": "Prepare a shortage draft, link a Zoho PO, and fulfil after replenishment."
+  },
+  {
+    "slug": "receiving",
+    "title": "Receive an order",
+    "group": "Stock & purchasing",
+    "description": "Find the order, count arrivals, and choose a bin for each item."
+  },
+  {
+    "slug": "warehouse-map",
+    "title": "Warehouse map & QR",
+    "group": "Warehouse tasks",
+    "description": "Search an item and locate its recorded section, level, and bin."
+  },
+  {
+    "slug": "equipment",
+    "title": "Equipment loans",
+    "group": "Warehouse tasks",
+    "description": "Record the holder, rig, condition, photos, and collection signature."
+  },
+  {
+    "slug": "calendar",
+    "title": "Trips & calendar",
+    "group": "Warehouse tasks",
+    "description": "Plan work and review warehouse allocations."
+  },
+  {
+    "slug": "status",
+    "title": "Status reference",
+    "group": "Reference",
+    "description": "Understand request and equipment status labels."
+  },
+  {
+    "slug": "troubleshooting",
+    "title": "Troubleshooting",
+    "group": "Reference",
+    "description": "Resolve sign-in, request, location, and receiving problems."
+  },
+  {
+    "slug": "release",
+    "title": "App version & updates",
+    "group": "Reference",
+    "description": "Identify the frontend build and understand documentation coverage."
+  }
+]
