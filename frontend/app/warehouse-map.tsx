@@ -91,7 +91,7 @@ export default function WarehouseMap() {
   if (!ready) return <Loading />
   if (!user) return <Redirect href={PATH.LOGIN} />
   return <View style={{ flex: 1, backgroundColor: colors.surface }} testID="warehouse-map-screen">
-    <Header title="Warehouse locator" subtitle="Search it. Locate it. Pick it." />
+    <Header title="Warehouse locator" />
     <ScrollView ref={pageScroll} testID="warehouse-locator-scroll" contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 40 }}>
       <View style={{ flexDirection: desktop ? "row" : "column", gap: 20, alignItems: "flex-start" }}>
         <View style={{ width: desktop ? 340 : "100%", gap: 14 }}>

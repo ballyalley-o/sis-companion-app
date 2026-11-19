@@ -1,11 +1,12 @@
+import { GLOBAL } from "config/global.config"
 import { VersionInfo } from "component/version-info"
 import { PATH } from 'route/path'
-import { Pressable, ScrollView, View } from "react-native"
+import { Linking, Pressable, ScrollView, View } from "react-native"
 import { useRouter, Href } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useAuth } from "state/auth"
 import { usesNativeTab } from "config/navigation"
-import { Body, Button, H1, H3, Icon, IconName, Label } from "component/ui"
+import { Body, Button, H1, H3, Icon, IconName, Label, useToast } from "component/ui"
 import { makeStyles, radius, spacing, useTheme } from "design/theme"
 
 type Item = { icon: IconName; label: string; sub: string; href: Href; roles: string[]; id: string }
@@ -40,6 +41,9 @@ export default function More() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const { user, logout } = useAuth()
+  const toast = useToast()
+  const documentationUrl = GLOBAL.DOCUMENTATION_URL
+  const helpEnabled = Boolean(documentationUrl && (/^https:\/\//i.test(documentationUrl) || /^http:\/\/(localhost|127\.0\.0\.1):8090\//i.test(documentationUrl)))
   const bottomChrome = usesNativeTab ? insets.bottom : 0
   return (
     <View style={s.root} testID="more-screen">
@@ -60,6 +64,16 @@ export default function More() {
             <Icon name="chevron-right" size={28} color={colors.muted} />
           </Pressable>
         ))}
+        {helpEnabled && <Pressable testID="more-help-centre" accessibilityRole="link" accessibilityLabel="Open staff help centre in browser" onPress={() => {
+          if (documentationUrl) Linking.openURL(documentationUrl).catch(() => toast("Could not open the help centre", "error"))
+        }} style={s.item}>
+          <View style={s.iconBox}><Icon name="book-open-page-variant-outline" size={26} color={colors.brandPrimary} /></View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Body style={{ color: colors.onSurface, fontWeight: "800", fontSize: 16 }}>Help centre</Body>
+            <Body style={{ color: colors.muted, fontSize: 13 }}>How-to guides & workflows · staff sign-in may be required</Body>
+          </View>
+          <Icon name="open-in-new" size={24} color={colors.muted} />
+        </Pressable>}
         <Button testID="logout-button" title="Sign out" icon="logout" variant="secondary" onPress={async () => { await logout(); router.replace(PATH.LOGIN) }} style={{ marginTop: spacing.md }} />
         <VersionInfo />
       </ScrollView>
