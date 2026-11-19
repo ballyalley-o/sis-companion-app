@@ -141,3 +141,12 @@ Validate metadata generation with:
 ```sh
 node frontend/test/test-release.cjs
 ```
+
+
+## Staff help centre
+
+User-facing guides live in [`guide/`](guide/README.md), separate from the engineering specifications. Build the static site with `python3 guide/build.py`. It includes task guides, search, workflow diagrams, mobile navigation, and printable pages.
+
+The intended hostname is `doc.siscompanion.com.au`. This is a deployment target, not a claim that DNS or hosting is live. Protect every documentation route and static asset with a staff identity gate before publishing. See the [hosting checklist](guide/HOSTING.md).
+
+After the host is ready, set `EXPO_PUBLIC_DOCUMENTATION_URL=https://doc.siscompanion.com.au` in the frontend build environment and rebuild. **More → Help centre** opens the same guide site from web or native mobile. It does not send an SIS session token through the URL.
