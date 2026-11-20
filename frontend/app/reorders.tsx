@@ -40,7 +40,7 @@ export default function Reorders() {
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : (
         <FlatList data={q.data} keyExtractor={(r) => r.id}
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: insets.bottom + spacing.xl }}
-          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={q.refetch} />}
+          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={() => { void q.refetch() }} />}
           ListEmptyComponent={<EmptyState icon="cart-check" title="No reorders" />}
           renderItem={({ item: r }) => (
             <Card testID={`reorder-card-${r.number}`} style={{ gap: spacing.sm }}>

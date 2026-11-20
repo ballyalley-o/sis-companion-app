@@ -38,7 +38,7 @@ export default function Requests() {
           data={res.data}
           keyExtractor={(r) => r.id}
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: insets.bottom + spacing.xl }}
-          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={res.isRefetching} onRefresh={res.refetch} />}
+          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={res.isRefetching} onRefresh={() => { void res.refetch() }} />}
           ListEmptyComponent={<EmptyState title={status === "pending" ? "Queue is clear" : "No requests"} text={status === "pending" ? "No pending approvals." : undefined} />}
           renderItem={({ item: r }) => (
             <Card testID={`request-card-${r.number}`} onPress={() => router.push({ pathname: PATH.REQUEST_DETAIL, params: { id: r.id } })} style={{ gap: spacing.md }}>

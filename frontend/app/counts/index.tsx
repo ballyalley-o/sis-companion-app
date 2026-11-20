@@ -50,7 +50,7 @@ export default function Counts() {
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : (
         <FlatList data={q.data} keyExtractor={(c) => c.id}
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: insets.bottom + spacing.xl }}
-          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={q.refetch} />}
+          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={() => { void q.refetch() }} />}
           ListEmptyComponent={<EmptyState icon="clipboard-check-outline" title="No counts yet" text="Start a cycle count on a few bins or a full stocktake" />}
           renderItem={({ item: c }) => (
             <Card testID={`count-card-${c.number}`} onPress={() => router.push({ pathname: PATH.COUNT_DETAIL, params: { id: c.id } })} style={{ gap: spacing.sm }}>

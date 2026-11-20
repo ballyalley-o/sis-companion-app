@@ -48,3 +48,29 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+
+## Expo Go on a physical device
+
+This frontend targets Expo SDK 58. Use the Expo Go release that supports SDK 58.
+
+Run from this `frontend` directory, not the repository root:
+
+```sh
+npm ci
+npx expo start --go --port 8082
+```
+
+Keep only one Expo development server running. Stop the previous server with Ctrl+C before restarting after an SDK/dependency update.
+
+On a phone, `EXPO_PUBLIC_BACKEND_URL` must point to an API origin the phone can reach, such as the Mac's LAN address on the same Wi-Fi. Do not use `localhost` for the phone's backend. Put local public frontend settings in the ignored `.env.local`; never copy server secrets into frontend environment files.
+
+If macOS reports too many file watchers, a temporary non-watching preview is:
+
+```sh
+CI=1 npx expo start --go --port 8082 --offline
+```
+
+In this mode automatic code reloads are disabled. The Mac and phone must be on the same reachable local network. After changing source, restart the preview. Offline refers to Expo service discovery; the local API connection is still required.
+
+The SDK 58 migration updates the React Native instance reference types, refresh callback signatures, and shared style typings without opting out of the strict API.
