@@ -36,6 +36,7 @@ export class ErrorBoundary extends Component<PropsWithChildren, ErrorBoundarySta
 function ErrorFallback({ error, resetError }: { error: Error; resetError: () => void }) {
   const styles = useStyles()
   const [showDetails, setShowDetails] = useState(false)
+  const diagnostics = __DEV__ || (Platform.OS === "web" && typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname))
 
   const handleReload = async () => {
     try {
@@ -51,7 +52,7 @@ function ErrorFallback({ error, resetError }: { error: Error; resetError: () => 
       <View style={styles.content}>
         <Text style={styles.title}>Something went wrong</Text>
         <Text style={styles.message}>Please reload the app to continue.</Text>
-        {__DEV__ ? <Text style={styles.devMessage}>{error.message}</Text> : null}
+        {diagnostics ? <Text style={styles.devMessage}>{error.message}</Text> : null}
         <Pressable
           onPress={handleReload}
           testID="error-fallback-reload"
@@ -60,13 +61,13 @@ function ErrorFallback({ error, resetError }: { error: Error; resetError: () => 
         >
           <Text style={styles.buttonText}>Reload app</Text>
         </Pressable>
-        {__DEV__ ? (
+        {diagnostics ? (
           <Pressable onPress={() => setShowDetails((v) => !v)} accessibilityRole="button" hitSlop={8}>
             <Text style={styles.detailsToggle}>{showDetails ? "Hide details" : "Show details"}</Text>
           </Pressable>
         ) : null}
       </View>
-      {__DEV__ && showDetails ? (
+      {diagnostics && showDetails ? (
         <ScrollView style={styles.details} contentContainerStyle={styles.detailsContent}>
           <Text selectable style={styles.detailsText}>
             {error.stack ?? error.message}
