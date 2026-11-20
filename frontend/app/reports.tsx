@@ -76,7 +76,7 @@ export default function Reports() {
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : (
         <FlatList data={q.data} keyExtractor={(x, i) => x.id || `${x.product_id}-${x.warehouse_id}-${i}`} renderItem={render}
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: insets.bottom + spacing.xl }}
-          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={q.refetch} />}
+          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={() => { void q.refetch() }} />}
           ListEmptyComponent={<EmptyState title="Nothing to report" />} />
       )}
     </View>

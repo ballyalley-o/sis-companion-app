@@ -1,7 +1,7 @@
 // SIS Companion design tokens. Use useTheme() or makeStyles() in components.
 
 import { useMemo } from "react"
-import { Appearance, StyleSheet, useColorScheme } from "react-native"
+import { Appearance, StyleSheet, useColorScheme, type ViewStyle, type TextStyle, type ImageStyle } from "react-native"
 
 export type ColorScheme = "light" | "dark"
 
@@ -70,8 +70,10 @@ export const fonts = {
     text: "Manrope",
 }
 
-export function makeStyles<T extends StyleSheet.NamedStyles<T> | StyleSheet.NamedStyles<any>>(
-    factory: (colors: ThemeColors) => T & StyleSheet.NamedStyles<any>,
+type NamedStyles<T> = { [Key in keyof T]: ViewStyle | TextStyle | ImageStyle }
+
+export function makeStyles<T extends NamedStyles<T> | NamedStyles<any>>(
+    factory: (colors: ThemeColors) => T & NamedStyles<any>,
 ): () => T {
     return function useStyles(): T {
         const { colors } = useTheme()

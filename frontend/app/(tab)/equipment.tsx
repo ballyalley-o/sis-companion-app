@@ -46,7 +46,7 @@ export default function Equipment() {
           data={res.data}
           keyExtractor={(e) => e.id}
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: bottomChrome + spacing.xl }}
-          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={res.isRefetching} onRefresh={res.refetch} />}
+          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={res.isRefetching} onRefresh={() => { void res.refetch() }} />}
           ListEmptyComponent={<EmptyState icon="toolbox-outline" title="Nothing here" text="No equipment matches this filter" />}
           renderItem={({ item: e }) => (
             <Card testID={`equipment-card-${e.code}`} onPress={() => router.push({ pathname: PATH.EQUIPMENT_DETAIL, params: { id: e.id } })}

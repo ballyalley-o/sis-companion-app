@@ -1,3 +1,4 @@
+import type { ScrollViewInstance } from "react-native"
 import { PATH }                                                                                   from 'route/path'
 import { useEffect, useRef, useState }                                                            from "react"
 import { AccessibilityInfo, Animated, Pressable, ScrollView, Text, useWindowDimensions, View }    from "react-native"
@@ -53,8 +54,8 @@ export default function WarehouseMap() {
   const [pick, setPick]               = useState<Pick | null>(params.equipment_id ? { kind: "equipment", id: params.equipment_id } : params.product_id ? { kind: "product", id: params.product_id } : null)
   const [chosen, setChosen]           = useState(params.bin_id)
   const [sectionCode, setSectionCode] = useState("SEC1")
-  const rackScroll                    = useRef<ScrollView>(null)
-  const pageScroll                    = useRef<ScrollView>(null)
+  const rackScroll                    = useRef<ScrollViewInstance>(null)
+  const pageScroll                    = useRef<ScrollViewInstance>(null)
   const rackPosition                  = useRef({ column: 0, rack: 0 })
   useEffect(() => { const timer = setTimeout(() => setDebounced(search.trim()), 250); return () => clearTimeout(timer) }, [search])
   useEffect(() => {

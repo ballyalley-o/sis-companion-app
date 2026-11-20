@@ -43,7 +43,7 @@ export default function Notifications() {
       <Header title="Notifications" right={<IconButton testID="notifications-read-all" icon="check-all" onPress={readAll} />} />
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : (
         <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: insets.bottom + spacing.xl }}
-          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={q.refetch} />}>
+          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={() => { void q.refetch() }} />}>
           {(q.data || []).length === 0 && <EmptyState icon="bell-check" title="All caught up" />}
           {(q.data || []).map((n) => {
             const k = KIND[n.kind] || KIND.info

@@ -57,7 +57,7 @@ export default function Stock() {
           keyExtractor={(p) => p.id}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: bottomChrome + spacing.xl }}
-          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={res.isRefetching} onRefresh={res.refetch} />}
+          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={res.isRefetching} onRefresh={() => { void res.refetch() }} />}
           ListHeaderComponent={
             !q ? (
               <View style={{ marginBottom: spacing.sm }}>
@@ -65,7 +65,7 @@ export default function Stock() {
               </View>
             ) : (res.data?.length ?? 0) < 3 ? (
               <DidYouMean q={q} wh={effWh} show onPick={(t) => setText(t)} testID="stock-did-you-mean" />
-            ) : null
+            ) : undefined
           }
           ListEmptyComponent={<EmptyState icon="package-variant-remove" title="No products found" text="Try another SKU or keyword" />}
           renderItem={({ item: p }) => {

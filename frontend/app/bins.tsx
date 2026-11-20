@@ -77,7 +77,7 @@ export default function Bins() {
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : (
         <FlatList data={q.data} keyExtractor={(b) => b.id}
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: insets.bottom + spacing.xl }}
-          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={q.refetch} />}
+          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={() => { void q.refetch() }} />}
           ListHeaderComponent={<Button testID="bins-print-all" title={`Print all ${wh} labels (100×30mm)`} icon="printer" loading={printing} onPress={() => print()} />}
           ListEmptyComponent={<EmptyState icon="grid-off" title="No bins" />}
           renderItem={({ item: b }) => (

@@ -21,7 +21,7 @@ export default function Kits() {
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : (
         <FlatList data={q.data} keyExtractor={(k) => k.id}
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: insets.bottom + spacing.xl }}
-          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={q.refetch} />}
+          refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={() => { void q.refetch() }} />}
           ListEmptyComponent={<EmptyState icon="package-variant-plus" title="No rig kits yet" text="Create a standard kit so drillers can request everything in one go" />}
           renderItem={({ item: k }) => (
             <Card testID={`kit-card-${k.id}`} onPress={() => router.push({ pathname: PATH.KIT_DETAIL, params: { id: k.id } })} style={{ gap: spacing.sm }}>

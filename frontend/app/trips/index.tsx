@@ -52,7 +52,7 @@ export default function TripsCalendar() {
       <Header title="Trip calendar" subtitle={user?.role === "driller" ? "Your planned trips" : "Planned driller trips"}
         right={<IconButton testID="trips-new-button" icon="plus" onPress={() => router.push({ pathname: PATH.TRIP_NEW, params: { date: sel } })} />} />
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}
-        refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={q.refetch} />}>
+        refreshControl={<RefreshControl tintColor={colors.brandPrimary} refreshing={q.isRefetching} onRefresh={() => { void q.refetch() }} />}>
         <ChipRow testIDPrefix="trips-filter" value={status} onChange={setStatus}
           options={[{ label: "All", value: "all" }, { label: "Pending", value: "pending" }, { label: "Approved", value: "approved" }, { label: "Prepared", value: "prepared" }, { label: "Issued", value: "issued" }]} />
         <View style={s.monthBar}>
