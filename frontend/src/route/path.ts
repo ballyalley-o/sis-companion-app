@@ -1,4 +1,8 @@
 export const PATH = {
+    ACCOUNT         : "/account",
+    ACCOUNT_PASSWORD: "/account/password",
+    RIG_ACCOUNT     : "/rig-account",
+    RIG_DETAIL      : "/rig-account/[id]",
     BIN            : '/bins',
     BIN_DETAIL      : '/bin/[id]',
     COUNT          : '/counts',
@@ -21,6 +25,7 @@ export const PATH = {
     REQUEST_NEW     : '/request/new',
     SCAN            : '/scan',
     TAB            : '/(tab)',
+    TAB_MORE       : '/(tab)/more',
     TAB_EQUIPMENT  : '/(tab)/equipment',
     TAB_ORDER     : '/(tab)/orders',
     TAB_STOCK      : '/(tab)/stock',
