@@ -1,3 +1,4 @@
+import { isRegionalManager } from "state/auth"
 import { useEffect, useState }                                                                                  from "react"
 import { Pressable, ScrollView, TextInput, View }                                                               from "react-native"
 import { PATH }                                                                                                 from 'route/path'
@@ -31,7 +32,7 @@ export default function StockHistory() {
   const [pid, setPid]   = useState(p.product_id || "")
   const [text, setText] = useState("")
   const [q, setQ]       = useState("")
-  const [wh, setWh]     = useState(user?.role === "manager" ? user.warehouse_id! : "ALL")
+  const [wh, setWh]     = useState(isRegionalManager(user) ? user.warehouse_id! : "ALL")
   useEffect(() => { const t = setTimeout(() => setQ(text), 300); return () => clearTimeout(t) }, [text])
   const results = useApi<any[]>(!pid && q.trim().length >= 2 ? `/products?q=${encodeURIComponent(q.trim())}` : null)
   const trace   = useApi<any>(pid ? `/products/${pid}/trace${wh !== "ALL" ? `?warehouse_id=${wh}` : ""}` : null)
@@ -76,7 +77,7 @@ export default function StockHistory() {
                 ))}
               </Row>
             </Card>
-            {user?.role !== "manager" && (
+            {!isRegionalManager(user) && (
               <View style={{ marginHorizontal: -spacing.lg }}>
                 <ChipRow testIDPrefix="history-wh" value={wh} onChange={setWh} options={[{ label: "All", value: "ALL" }, { label: "QLD", value: "QLD" }, { label: "NSW", value: "NSW" }]} />
               </View>

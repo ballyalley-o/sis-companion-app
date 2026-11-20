@@ -1,3 +1,4 @@
+import { isRegionalManager } from "state/auth"
 import { useState } from "react"
 import { FlatList, RefreshControl, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -71,7 +72,7 @@ export default function Reports() {
 
   return (
     <View style={s.root} testID="reports-screen">
-      <Header title="Reports" subtitle={user?.role === "manager" ? `${user.warehouse_id} warehouse` : "All warehouses"} />
+      <Header title="Reports" subtitle={isRegionalManager(user) ? `${user.warehouse_id} warehouse` : "All warehouses"} />
       <View style={s.chips}><ChipRow testIDPrefix="reports-tab" value={tab} onChange={setTab} options={opts} /></View>
       {q.isLoading ? <Loading /> : q.isError ? <ErrorState message={(q.error as Error).message} onRetry={q.refetch} /> : (
         <FlatList data={q.data} keyExtractor={(x, i) => x.id || `${x.product_id}-${x.warehouse_id}-${i}`} renderItem={render}

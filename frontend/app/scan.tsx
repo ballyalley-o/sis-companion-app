@@ -1,3 +1,4 @@
+import { isRegionalManager } from "state/auth"
 import { PATH } from 'route/path'
 import { useRef, useState } from "react"
 import { Linking, Platform, View } from "react-native"
@@ -90,7 +91,7 @@ export default function Scan() {
   return (
     <View style={s.root} testID="scan-screen">
       <Header title="Scan" subtitle="Bin QR · Equipment ID · SKU" />
-      <ChipRow testIDPrefix="scan-warehouse" options={(user?.role === "manager" ? [user.warehouse_id || "QLD"] : ["QLD", "NSW"]).map(value => ({ label: value, value }))} value={warehouse} onChange={setWarehouse} />
+      <ChipRow testIDPrefix="scan-warehouse" options={(isRegionalManager(user) ? [user.warehouse_id || "QLD"] : ["QLD", "NSW"]).map(value => ({ label: value, value }))} value={warehouse} onChange={setWarehouse} />
       <KeyboardAwareScrollView bottomOffset={24} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}>
         {camera()}
         <View style={s.bottom}>

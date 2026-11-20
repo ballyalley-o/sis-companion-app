@@ -1,3 +1,4 @@
+import { isRegionalManager } from "state/auth"
 import { PATH } from 'route/path'
 import { useState } from "react"
 import { FlatList, RefreshControl, View } from "react-native"
@@ -27,7 +28,7 @@ export default function Requests() {
 
   return (
     <View style={s.root} testID="requests-screen">
-      <Header title={staff ? "Approvals" : "My requests"} subtitle={user?.role === "manager" ? `${user.warehouse_id} warehouse` : staff ? "All warehouses" : "Take & return history"}
+      <Header title={staff ? "Approvals" : "My requests"} subtitle={isRegionalManager(user) ? `${user.warehouse_id} warehouse` : staff ? "All warehouses" : "Take & return history"}
         right={<IconButton testID="requests-new-button" icon="plus" onPress={() => router.push(PATH.REQUEST_NEW)} />} />
       <View style={s.chips}>
         <ChipRow testIDPrefix="requests-filter" value={status} onChange={setStatus}

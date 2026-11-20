@@ -1,3 +1,4 @@
+import { isRegionalManager } from "state/auth"
 import { useEffect, useRef, useState } from "react"
 import { Pressable, View } from "react-native"
 import { useLocalSearchParams, useRouter } from "expo-router"
@@ -28,7 +29,7 @@ export default function Receive() {
   const qc = useQueryClient()
   const { user } = useAuth()
   const p = useLocalSearchParams<{ wh?: string; bin_id?: string; reorder_id?: string }>()
-  const [wh, setWh] = useState<string>(user?.role === "manager" ? user.warehouse_id! : p.wh || "QLD")
+  const [wh, setWh] = useState<string>(isRegionalManager(user) ? user.warehouse_id! : p.wh || "QLD")
   const [supplier, setSupplier] = useState("")
   const [reference, setReference] = useState("")
   const [notes, setNotes] = useState("")

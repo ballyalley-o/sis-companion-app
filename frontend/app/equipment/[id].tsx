@@ -1,3 +1,4 @@
+import { isRegionalManager } from "state/auth"
 import { PATH } from 'route/path'
 import { useRef, useState } from "react"
 import { CameraView, useCameraPermissions } from "expo-camera"
@@ -62,7 +63,7 @@ export default function EquipmentDetail() {
     : e ? demoPhotos[e.code] : undefined
   const canEdit = Boolean(e && !e.archived && user?.role === "admin")
   const canAddPhoto = canEdit || (!e?.archived && !equipmentPhoto &&
-    user?.role === "manager" && user.warehouse_id === e?.warehouse_id)
+    isRegionalManager(user) && user.warehouse_id === e?.warehouse_id)
 
   async function saveDetails() {
     if (!name.trim() || savingDetails) return
