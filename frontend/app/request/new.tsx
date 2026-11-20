@@ -1,3 +1,4 @@
+import { isRegionalManager } from "state/auth"
 import { PATH } from 'route/path'
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Pressable, View } from "react-native"
@@ -117,7 +118,7 @@ export default function NewRequest() {
           ))}
         </Row>
 
-        {user?.role !== "manager" && (
+        {!isRegionalManager(user) && (
           <View style={s.section}>
             <Label>Warehouse</Label>
             <View style={{ marginHorizontal: -spacing.lg }}>

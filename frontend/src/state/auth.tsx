@@ -2,8 +2,8 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { api, loadToken, setToken, setUnauthorizedHandler } from "lib/api"
 import { queryClient } from "state/query-client"
 
-export type Role = "driller" | "manager" | "admin"
-export type User = { id: string; email: string; name: string; role: Role; warehouse_id: string | null }
+export type Role = "driller" | "manager" | "senior_drilling_manager" | "general_manager" | "administrator_2" | "admin"
+export type User = { id: string; email: string; name: string; role: Role; warehouse_id: string | null; active?: boolean; rig_id?: string | null; photo_path?: string | null; created_at?: string | null }
 
 type Ctx = {
     user: User | null
@@ -11,6 +11,7 @@ type Ctx = {
     login: (email: string, password: string) => Promise<void>
     loginWithGoogle: (credential: string) => Promise<void>
     logout: () => Promise<void>
+    refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<Ctx>({} as Ctx)
@@ -54,8 +55,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(res.user)
     }, [])
 
-    return <AuthContext.Provider value={{ user, ready, login, loginWithGoogle, logout }}>{children}</AuthContext.Provider>
+    const refreshUser = useCallback(async () => { setUser(await api<User>("/auth/me")) }, [])
+
+    return <AuthContext.Provider value={{ user, ready, login, loginWithGoogle, logout, refreshUser }}>{children}</AuthContext.Provider>
 }
 
 export const useAuth = () => useContext(AuthContext)
-export const isStaff = (u: User | null) => u?.role === "manager" || u?.role === "admin"
+export const isRegionalManager = (u: User | null): u is User & { role: "manager" | "senior_drilling_manager" } => u?.role === "manager" || u?.role === "senior_drilling_manager"
+export const isStaff = (u: User | null) => Boolean(u && ["manager", "senior_drilling_manager", "general_manager", "administrator_2", "admin"].includes(u.role))
+export const roleLabel = (role?: string) => ({ driller: "Driller", manager: "Warehouse manager", senior_drilling_manager: "Senior drilling manager", general_manager: "General manager", administrator_2: "Administrator 2", admin: "Administrator" }[role || ""] || role || "Unassigned")

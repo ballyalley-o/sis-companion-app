@@ -1,3 +1,4 @@
+import { isRegionalManager } from "state/auth"
 import type { ScrollViewInstance } from "react-native"
 import { PATH }                                                                                   from 'route/path'
 import { useEffect, useRef, useState }                                                            from "react"
@@ -70,7 +71,8 @@ export default function WarehouseMap() {
   const item = detail.data
   const home = bins.data?.find(b => b.id === item?.home_bin_id)
   const locations: any[] = pick?.kind === "equipment" ? (item?.warehouse_id === wh && home ? [{ bin_id: home.id, bin_code: home.code, qty: 1 }] : []) : (item?.locations || []).filter((l: any) => l.warehouse_id === wh)
-  const selected = locations.find(l => l.bin_id === chosen) || locations[0]
+  const selectedBin = !pick && chosen ? bins.data?.find(b => b.id === chosen) : null
+  const selected = locations.find(l => l.bin_id === chosen) || locations[0] || (selectedBin ? { bin_id: selectedBin.id, bin_code: selectedBin.code } : undefined)
   const target = locateBin(selected?.bin_code)
   const section = target?.section || mapSections.find(s => s.code === sectionCode)!
   const away = pick?.kind === "equipment" && item?.status !== "available"
@@ -96,7 +98,7 @@ export default function WarehouseMap() {
     <ScrollView ref={pageScroll} testID="warehouse-locator-scroll" contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 40 }}>
       <View style={{ flexDirection: desktop ? "row" : "column", gap: 20, alignItems: "flex-start" }}>
         <View style={{ width: desktop ? 340 : "100%", gap: 14 }}>
-          <ChipRow testIDPrefix="map-warehouse" options={(user.role === "manager" ? [user.warehouse_id || "QLD"] : ["QLD", "NSW"]).map(value => ({ label: value, value }))} value={wh} onChange={value => { setWh(value); setPick(null); setChosen(undefined) }} />
+          <ChipRow testIDPrefix="map-warehouse" options={(isRegionalManager(user) ? [user.warehouse_id || "QLD"] : ["QLD", "NSW"]).map(value => ({ label: value, value }))} value={wh} onChange={value => { setWh(value); setPick(null); setChosen(undefined) }} />
           <Field testID="map-search" label="Find stock or equipment" placeholder="Name, SKU or equipment code" value={search} onChangeText={setSearch} autoCapitalize="none" />
           <Label>{debounced ? "Search results" : "Try the map test items"}</Label>
           {(products.isLoading || equipment.isLoading) && <Loading />}

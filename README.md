@@ -150,3 +150,58 @@ User-facing guides live in [`guide/`](guide/README.md), separate from the engine
 The intended hostname is `doc.siscompanion.com.au`. This is a deployment target, not a claim that DNS or hosting is live. Protect every documentation route and static asset with a staff identity gate before publishing. See the [hosting checklist](guide/HOSTING.md).
 
 After the host is ready, set `EXPO_PUBLIC_DOCUMENTATION_URL=https://doc.siscompanion.com.au` in the frontend build environment and rebuild. **More → Help centre** opens the same guide site from web or native mobile. It does not send an SIS session token through the URL.
+
+
+## User and rig accounts
+
+Open **More → My account** to view your email, role, active status, home warehouse, assigned rig, base area, and senior drilling manager. Users can update their own name and upload/change/remove their profile photo. Profile photos use the existing configured storage service; removing a profile photo unlinks it and does not purge the stored file.
+
+**My account → Update password** requires the current password and a new password of at least 12 characters (maximum 72 UTF-8 bytes). A successful change revokes previous sessions and keeps the changing session signed in with a replacement token. Password-only changes do not affect the user's role or rig. Google-only accounts without a password must contact an administrator rather than using this form to bypass current-password verification.
+
+### Role and warehouse permissions
+
+| Role | Operational scope | System administration |
+| --- | --- | --- |
+| Driller | Own profile and explicitly assigned rig account. Existing individual request/trip detail permissions remain enforced. | No. |
+| Warehouse manager | Operational actions in the assigned QLD or NSW warehouse. | No. |
+| Senior drilling manager | Operational manager permissions in the assigned QLD or NSW warehouse; may supervise rigs there. | No. |
+| General manager | Operational manager permissions across both warehouses. | No user/role administration or Zoho configuration access. |
+| Administrator | All warehouses, role and crew assignments, integration configuration. | Yes. |
+
+Senior drilling manager is one role with a mandatory regional warehouse assignment, not two duplicated role types. Account roles and rig assignments are administrator-controlled, never editable through self-service profile updates.
+
+### Configure rigs and crew
+
+1. Create the required senior drilling manager account in **Users & roles**, selecting QLD or NSW.
+2. Open **More → Rig accounts**, select an existing rig, then **Manage rig details**. Set its warehouse, base area, and active senior drilling manager in the same warehouse.
+3. Open **Users & roles → Manage account** to assign each user to a matching warehouse and rig. Access changes invalidate that user's previous sessions; they must sign in again.
+4. The rig account shows crew, current/upcoming and recent trips, equipment loans, stock request summaries, stock movements, and rig-account audit activity.
+
+Legacy rigs are not assigned regions by guessing from rig numbers or historical stock. Administrators or the general manager first configure unassigned rigs. Regional managers can manage rigs already in their warehouse. Cross-warehouse rig transfers require a separate reviewed migration; this screen deliberately refuses them to preserve historical warehouse associations.
+
+### Operations pallet allocations
+
+Warehouse staff can allocate a labelled pallet to an active **SEC1** Operations bin in the rig's own warehouse. Pallet references are unique within each warehouse. Staff can move a pallet between valid Operations bins, release it, or store it again. Released records remain visible for history.
+
+These are physical allocation records with a contents description. They do not automatically deduct, reserve, transfer, or otherwise change stock quantities in SIS or Zoho. A pallet is not automatically a product stock row. The current screen does not transfer an existing pallet reference between rigs.
+
+### Scope and verification
+
+Rig dashboards use the rig number **and warehouse** to match existing requests, trips, loans, and movements. They show up to 100 records per activity category, 200 pallet records, and explicitly assigned crew. Equipment signatures are excluded from the rig summary. Existing detail screens retain their own access checks, so a driller sees links to their own request/trip details only.
+
+Account API tests use an isolated stub database and cover password changes, token versions, profile-photo ownership, privilege escalation, regional rig access, supervisor validation, pallet restrictions, and warehouse-filtered summaries. They do not constitute live database, storage, or device verification.
+
+```sh
+PYTHONPATH=backend python3 -m unittest discover -s backend/tests -p test_account_api.py -v
+```
+
+Install the backend application dependencies plus `httpx` for these FastAPI TestClient tests. No live database or Zoho credentials are needed.
+
+
+### Account editor and Administrator 2
+
+The account view separates fields with additional spacing and uses a status chip. Administrators can open **Edit account details** to update their warehouse and rig, while profile name and photo remain editable through **Save profile**. Email and member-since are read-only. Shared rig base-area and supervisor details are edited through **View / edit rig details**. Ordinary users cannot elevate their own role or change privileged assignments.
+
+**Administrator 2** (`administrator_2`) has operational access across both warehouses, but cannot manage users, grant roles, or configure Zoho. It is intentionally different from Administrator. An Administrator can create or assign this role in **Users & roles**.
+
+Administrator access changes return a replacement token for the current session when editing the current account. Another administrator must downgrade or deactivate your own administrator account. Administrators can explicitly set other accounts Active or Inactive through **Manage account**, with access changes invalidating that user's existing sessions.

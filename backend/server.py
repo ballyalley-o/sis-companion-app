@@ -1,4 +1,6 @@
 import logging
+from account_policy import REGIONAL_ROLES, role_allowed, session_current
+from account_api import register_account_routes
 from purchase_shortage import purchase_shortage
 import os
 import uuid
@@ -73,12 +75,12 @@ def iso():
 
 # ---------------------------------------------------------------- auth
 def make_token(user):
-    payload = {"sub": user["id"], "role": user["role"], "iat": now(), "exp": now() + timedelta(days=7)}
+    payload = {"sub": user["id"], "role": user["role"], "version": user.get("token_version", 0), "iat": now(), "exp": now() + timedelta(days=7)}
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
 
 def public_user(u):
-    return {k: u.get(k) for k in ("id", "email", "name", "role", "warehouse_id", "active")}
+    return {k: u.get(k) for k in ("id", "email", "name", "role", "warehouse_id", "active", "rig_id", "photo_path", "created_at")}
 
 
 async def current_user(request: Request):
@@ -91,14 +93,14 @@ async def current_user(request: Request):
     except jwt.InvalidTokenError:
         raise HTTPException(401, "Invalid or expired token")
     user = await db.users.find_one({"id": payload.get("sub"), "active": True}, NOPROJ)
-    if not user:
+    if not user or not session_current(payload, user):
         raise HTTPException(401, "Invalid or expired token")
     return user
 
 
 def roles(*allowed):
     async def dep(user=Depends(current_user)):
-        if user["role"] not in allowed:
+        if not role_allowed(user["role"], allowed):
             raise HTTPException(403, "Insufficient permissions")
         return user
     return dep
@@ -106,7 +108,9 @@ def roles(*allowed):
 
 def scope_wh(user, warehouse_id: Optional[str]):
     """Managers are locked to their warehouse; others may filter or see all."""
-    if user["role"] == "manager":
+    if user["role"] in REGIONAL_ROLES:
+        if user.get("warehouse_id") not in ("QLD", "NSW"):
+            raise HTTPException(403, "Your regional warehouse assignment is missing")
         if warehouse_id and warehouse_id != user["warehouse_id"]:
             raise HTTPException(403, "Managers can only access their own warehouse")
         return user["warehouse_id"]
@@ -114,7 +118,7 @@ def scope_wh(user, warehouse_id: Optional[str]):
 
 
 def ensure_wh_access(user, warehouse_id):
-    if user["role"] == "manager" and warehouse_id != user["warehouse_id"]:
+    if user["role"] in REGIONAL_ROLES and (not user.get("warehouse_id") or warehouse_id != user["warehouse_id"]):
         raise HTTPException(403, "Managers can only access their own warehouse")
 
 
@@ -268,7 +272,8 @@ async def list_rigs(user=Depends(current_user)):
 
 
 class RigIn(BaseModel):
-    number: str
+    number: str = Field(min_length=1, max_length=80)
+    warehouse_id: Optional[Literal["QLD", "NSW"]] = None
 
 
 @api.post("/rigs")
@@ -276,7 +281,7 @@ async def add_rig(body: RigIn, user=Depends(roles("admin", "manager"))):
     num = body.number.strip().upper()
     if await db.rigs.find_one({"number": num}):
         raise HTTPException(409, "Rig already exists")
-    doc = {"id": nid(), "number": num}
+    doc = {"id": nid(), "number": num, "warehouse_id": scope_wh(user, body.warehouse_id), "base_area": "", "supervisor_id": None}
     await db.rigs.insert_one(dict(doc))
     return doc
 
@@ -291,7 +296,7 @@ class UserIn(BaseModel):
     email: str
     password: str = Field(min_length=8)
     name: str
-    role: Literal["driller", "manager", "admin"]
+    role: Literal["driller", "manager", "senior_drilling_manager", "general_manager", "administrator_2", "admin"]
     warehouse_id: Optional[str] = None
 
 
@@ -305,7 +310,7 @@ async def create_user(body: UserIn, user=Depends(roles("admin"))):
     email = body.email.strip().lower()
     if await db.users.find_one({"email": email}):
         raise HTTPException(409, "Email already registered")
-    if body.role == "manager" and not body.warehouse_id:
+    if body.role in REGIONAL_ROLES and body.warehouse_id not in ("QLD", "NSW"):
         raise HTTPException(400, "Managers must be assigned a warehouse")
     doc = {"id": nid(), "email": email, "password_hash": bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode(),
            "name": body.name.strip(), "role": body.role, "warehouse_id": body.warehouse_id, "active": True, "created_at": iso()}
@@ -371,7 +376,7 @@ async def product_with_stock(p, warehouse_id=None):
 
 @api.get("/products")
 async def list_products(q: str = "", warehouse_id: Optional[str] = None, user=Depends(current_user)):
-    wh = scope_wh(user, warehouse_id) if user["role"] == "manager" else warehouse_id
+    wh = scope_wh(user, warehouse_id) if user["role"] in REGIONAL_ROLES else warehouse_id
     filt = {}
     if q.strip():
         rx = {"$regex": re.escape(q.strip()), "$options": "i"}
@@ -968,7 +973,7 @@ async def list_purchase_orders(user=Depends(roles("manager", "admin"))):
                      "warehouse_id": warehouse_id, "mode": mode, "lines": [],
                      "ordered_units": None, "remaining_units": None}
         output.append(order)
-    if user["role"] == "manager":
+    if user["role"] in REGIONAL_ROLES:
         output = [order for order in output if order.get("warehouse_id") in (None, user["warehouse_id"])]
     return sorted(output, key=lambda order: order.get("expected_delivery_date") or order.get("date") or "", reverse=False)
 
@@ -987,7 +992,7 @@ async def lookup_purchase_order(reference: str = Query(min_length=2, max_length=
     if mode == "live":
         raw, mode = await _purchase_order_detail(str(raw.get("purchaseorder_id")))
     order = await _normalize_purchase_order(raw, mode)
-    if user["role"] == "manager" and order.get("warehouse_id") not in (None, user["warehouse_id"]):
+    if user["role"] in REGIONAL_ROLES and order.get("warehouse_id") not in (None, user["warehouse_id"]):
         raise HTTPException(403, "This order is mapped to another warehouse")
     return order
 
@@ -1638,8 +1643,8 @@ async def dashboard(warehouse_id: Optional[str] = None, user=Depends(current_use
 # ---------------------------------------------------------------- notifications
 def notif_filter(user):
     return {"$or": [{"user_id": user["id"]},
-                    {"user_id": None, "roles": user["role"],
-                     **({"warehouse_id": {"$in": [user["warehouse_id"], None]}} if user["role"] == "manager" else {})}]}
+                    {"user_id": None, "roles": {"$in": list({user["role"], "manager"} if role_allowed(user["role"], ("manager",)) else {user["role"]})},
+                     **({"warehouse_id": {"$in": [user["warehouse_id"], None]}} if user["role"] in REGIONAL_ROLES else {})}]}
 
 
 @api.get("/notifications")
@@ -2178,6 +2183,8 @@ async def submit_join_request(request: Request):
     )
 
 
+register_account_routes(api, db, current_user, roles, public_user, audit, make_token, iso, nid)
+
 app.include_router(api)
 app.add_middleware(CORSMiddleware, allow_credentials=False, allow_origins=CORS_ORIGINS,
                    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -2186,6 +2193,11 @@ app.add_middleware(CORSMiddleware, allow_credentials=False, allow_origins=CORS_O
 
 @app.on_event("startup")
 async def startup():
+    await db.users.create_index("rig_id")
+    await db.pallet_allocations.create_index("id", unique=True)
+    await db.pallet_allocations.create_index([("rig_id", 1), ("updated_at", -1)])
+    for collection in (db.trips, db.stock_requests, db.equipment_loans, db.movements):
+        await collection.create_index([("warehouse_id", 1), ("rig_number", 1)])
     await db.users.create_index("email", unique=True)
     await db.movements.create_index("id", unique=True)
     await db.audit_logs.create_index("id", unique=True)

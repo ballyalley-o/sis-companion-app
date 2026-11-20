@@ -1,3 +1,6 @@
+import { setToken } from "lib/api"
+import { useAuth } from "state/auth"
+import { roleLabel } from "state/auth"
 import { useEffect, useState }                                                                                                   from "react"
 import { FlatList, Share, Text, View, useWindowDimensions }                                                                      from "react-native"
 import { Image }                                                                                                                 from "expo-image"
@@ -71,10 +74,39 @@ export default function Users() {
     }
   }
 
+  const { user: currentUser, refreshUser } = useAuth()
+  const rig = useApi<any[]>("/rig-accounts")
+  const [accessActive, setAccessActive] = useState(true)
+  const [editing, setEditing] = useState<any>(null)
+  const [accessRole, setAccessRole] = useState("driller")
+  const [accessWarehouse, setAccessWarehouse] = useState("QLD")
+  const [accessRig, setAccessRig] = useState("")
+  const editAccount = (u: any) => {
+    setEditing(u)
+    setAccessActive(u.active !== false)
+    setAccessRole(u.role)
+    setAccessWarehouse(u.warehouse_id || "")
+    setAccessRig(u.rig_id || "")
+  }
+  const saveAccess = async () => {
+    setBusy(true)
+    try {
+      const result = await api(`/users/${editing.id}/assignment`, { method: "PATCH", body: { role: accessRole, warehouse_id: accessWarehouse || null, rig_id: accessRig || null, active: accessActive } })
+      if (result.access_token) {
+        await setToken(result.access_token)
+        await refreshUser()
+      }
+      setEditing(null)
+      await qc.invalidateQueries()
+      toast("Account access updated. The user must sign in again.")
+    } catch (error) { toast(error instanceof Error ? error.message : "Could not update account", "error") }
+    finally { setBusy(false) }
+  }
+
   const create = async () => {
     setBusy(true)
     try {
-      await api("/users", { method: "POST", body: { ...f, warehouse_id: f.role === "admin" ? null : f.warehouse_id } })
+      await api("/users", { method: "POST", body: { ...f, warehouse_id: ["admin", "general_manager", "administrator_2"].includes(f.role) ? null : f.warehouse_id } })
       toast(`${f.name} added`)
       setOpen(false)
       setF({ name: "", email: "", password: "", role: "driller", warehouse_id: "QLD" })
@@ -136,15 +168,17 @@ export default function Users() {
           )}
           renderItem={({ item: u }) => (
             <Card testID={`user-card-${u.email}`} style={!u.active ? { opacity: 0.5 } : undefined}>
-              <Row>
-                <View style={{ flex: 1, gap: 2 }}>
+              <Row style={{ flexWrap: "wrap" }}>
+                <View style={{ flex: 1, minWidth: 160, gap: 2 }}>
                   <Body style={{ color: colors.onSurface, fontWeight: "800" }}>{u.name}</Body>
                   <Body style={{ fontSize: 13 }}>{u.email}</Body>
-                  <Row style={{ gap: spacing.sm }}>
-                    <StatusPill status={u.role === "admin" ? "live" : u.role === "manager" ? "open" : "take"} label={u.role} />
+                  <Row style={{ gap: spacing.sm, flexWrap: "wrap" }}>
+                    <StatusPill status={u.role === "admin" ? "live" : u.role === "manager" ? "open" : "take"} label={roleLabel(u.role)} />
+                    <StatusPill status={u.active ? "available" : "cancelled"} label={u.active ? "Active" : "Inactive"} />
                     {u.warehouse_id && <Label>{u.warehouse_id}</Label>}
                   </Row>
                 </View>
+                <Button title="Manage account" variant="ghost" onPress={() => editAccount(u)} />
                 <IconButton testID={`user-toggle-${u.email}`} icon={u.active ? "account-cancel" : "account-check"} onPress={() => toggle(u)} />
               </Row>
             </Card>
@@ -169,6 +203,20 @@ export default function Users() {
         <Field label="Temporary password" placeholder="At least 12 characters" secureTextEntry value={approvalPassword} onChangeText={setApprovalPassword} />
         <Button title="Approve and create account" loading={approving} disabled={approvalPassword.length < 12} onPress={approve} />
       </Sheet>
+      <Sheet visible={Boolean(editing)} onClose={() => { if (!busy) setEditing(null) }}>
+        <H3>Manage {editing?.name}</H3>
+        <Label>Status</Label>
+        <Row style={{ gap: spacing.sm }}><Chip label="Active" selected={accessActive} onPress={() => setAccessActive(true)} /><Chip label="Inactive" selected={!accessActive} onPress={() => setAccessActive(false)} /></Row>
+        {editing?.id === currentUser?.id && <Body>Another administrator must deactivate your account.</Body>}
+        <Label>Role</Label>
+        <Row style={{ gap: spacing.sm, flexWrap: "wrap" }}>{["driller", "manager", "senior_drilling_manager", "general_manager", "administrator_2", "admin"].map(role => <Chip key={role} label={roleLabel(role)} selected={accessRole === role} onPress={() => { setAccessRole(role); setAccessRig("") }} />)}</Row>
+        <Label>Home warehouse</Label>
+        <Row style={{ gap: spacing.sm, flexWrap: "wrap" }}>{[...(["admin", "general_manager", "administrator_2"].includes(accessRole) ? [""] : []), "QLD", "NSW"].map(wh => <Chip key={wh} label={wh || "All warehouses"} selected={accessWarehouse === wh} onPress={() => { setAccessWarehouse(wh); setAccessRig("") }} />)}</Row>
+        <Label>Assigned rig</Label>
+        {rig.isError ? <ErrorState message={rig.error.message} onRetry={rig.refetch} /> : <Row style={{ gap: spacing.sm, flexWrap: "wrap" }}><Chip label="Unassigned" selected={!accessRig} onPress={() => setAccessRig("")} />{(rig.data || []).filter(r => r.warehouse_id === accessWarehouse).map(r => <Chip key={r.id} label={r.number} selected={accessRig === r.id} onPress={() => setAccessRig(r.id)} />)}</Row>}
+        <Body>Regional managers require a warehouse. Configure the rig warehouse in Rig accounts before assigning crew.</Body>
+        <Button title="Save account access" loading={busy} disabled={["manager", "senior_drilling_manager"].includes(accessRole) && !accessWarehouse} onPress={saveAccess} />
+      </Sheet>
       <Sheet visible={open} onClose={() => setOpen(false)} testID="new-user-sheet">
         <KeyboardAwareScrollView bottomOffset={24} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.md }}>
           <H3>Add user</H3>
@@ -176,10 +224,10 @@ export default function Users() {
           <Field testID="user-email-input" placeholder="Email" value={f.email} autoCapitalize="none" keyboardType="email-address" onChangeText={(v) => setF({ ...f, email: v })} />
           <Field testID="user-password-input" placeholder="Temporary password (8+ chars)" value={f.password} secureTextEntry onChangeText={(v) => setF({ ...f, password: v })} />
           <Label>Role</Label>
-          <Row style={{ gap: spacing.sm }}>
-            {["driller", "manager", "admin"].map((r) => <Chip key={r} testID={`user-role-${r}`} label={r} selected={f.role === r} onPress={() => setF({ ...f, role: r })} />)}
+          <Row style={{ gap: spacing.sm, flexWrap: "wrap" }}>
+            {["driller", "manager", "senior_drilling_manager", "general_manager", "administrator_2", "admin"].map((r) => <Chip key={r} testID={`user-role-${r}`} label={roleLabel(r)} selected={f.role === r} onPress={() => setF({ ...f, role: r })} />)}
           </Row>
-          {f.role !== "admin" && (
+          {!["admin", "general_manager", "administrator_2"].includes(f.role) && (
             <>
               <Label>Home warehouse</Label>
               <Row style={{ gap: spacing.sm }}>

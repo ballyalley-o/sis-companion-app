@@ -1,3 +1,4 @@
+import { isRegionalManager } from "state/auth"
 import { PATH } from 'route/path'
 import { useEffect, useMemo, useState } from "react"
 import { Pressable, View } from "react-native"
@@ -98,7 +99,7 @@ export default function TripForm() {
     <View style={s.root} testID="trip-form-screen">
       <Header title={p.id ? "Edit trip" : "Plan a trip"} subtitle="List stock in advance so we can prepare it" />
       <KeyboardAwareScrollView bottomOffset={120} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: spacing.lg, gap: spacing.xl, paddingBottom: spacing.xxl }}>
-        {user?.role !== "manager" && (
+        {!isRegionalManager(user) && (
           <View style={{ gap: spacing.sm }}>
             <Label>Warehouse</Label>
             <View style={{ marginHorizontal: -spacing.lg }}>
