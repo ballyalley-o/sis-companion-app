@@ -1,9 +1,10 @@
+import type { ComponentProps } from "react"
 import { Platform, Pressable, useWindowDimensions, View } from "react-native"
 import { Image }                                          from "expo-image"
 import { Redirect, Tabs, useRouter }                      from "expo-router"
 import { NativeTabs }                                     from "expo-router/unstable-native-tabs"
 import { usesNativeTab }                                  from "config/navigation"
-import { useAuth }                                        from "state/auth"
+import { useAuth, type User }                                        from "state/auth"
 import { PATH }                                           from 'route/path'
 import { VersionInfo }                                    from "component/version-info"
 import { Body, Icon, Label, Loading }                     from "component/ui"
@@ -16,11 +17,20 @@ const sidebarStyles = makeStyles((c) => ({
   item : { minHeight: 48, flexDirection: "row", alignItems: "center", gap: spacing.md, paddingHorizontal: spacing.md, borderRadius: 6 },
 }))
 
-function DesktopSidebar({ state, descriptors, navigation, user }: any) {
+type SidebarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>["tabBar"]>>[0] & { user: User }
+
+function DesktopSidebar({ state, descriptors, emitter, navigateToTab, user }: SidebarProps) {
   const router     = useRouter()
   const s          = sidebarStyles()
   const { colors } = useTheme()
-  const items      = state.routes.filter((route: any) => descriptors[route.key]?.options?.href !== null
+  const destination = {
+    index: PATH.TAB,
+    stock: PATH.TAB_STOCK,
+    equipment: PATH.TAB_EQUIPMENT,
+    orders: PATH.TAB_ORDER,
+    more: PATH.TAB_MORE,
+  } as const
+  const items      = state.routes.filter((route) => route.name in destination
     && !(user?.role === "driller" && descriptors[route.key]?.options?.title === "Orders"))
   return (
     <View style={s.root}>
@@ -37,7 +47,10 @@ function DesktopSidebar({ state, descriptors, navigation, user }: any) {
           const color = focused ? colors.onBrandPrimary : colors.onSurfaceSecondary
           const icon = options.tabBarIcon?.({ focused, color, size: 20 })
           return (
-            <Pressable key={route.key} onPress={() => navigation.navigate(route.name)} style={[s.item, focused && { backgroundColor: colors.brandPrimary }]}>
+            <Pressable key={route.key} testID={`sidebar-${route.name}`} accessibilityRole="tab" accessibilityState={{ selected: focused }} onPress={() => {
+              const event = emitter.emit({ type: "tabPress", target: route.key, canPreventDefault: true })
+              if (!focused && !event.defaultPrevented) navigateToTab(route.key)
+            }} style={[s.item, focused && { backgroundColor: colors.brandPrimary }]}>
               {icon}
               <Body style={{ color, fontWeight: focused ? "800" : "600", fontSize: 14 }}>{String(options.title || route.name)}</Body>
             </Pressable>

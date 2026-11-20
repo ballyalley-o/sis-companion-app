@@ -1,3 +1,4 @@
+import { isRegionalManager } from "state/auth"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Platform, Pressable, ScrollView, TextInput, View, useWindowDimensions } from "react-native"
 import { useQueryClient } from "@tanstack/react-query"
@@ -45,7 +46,7 @@ export default function Orders() {
   const [order, setOrder] = useState<PurchaseOrder | null>(null)
   const [arrivals, setArrivals] = useState<Record<string, Arrival>>({})
   const [scan, setScan] = useState("")
-  const [warehouse, setWarehouse] = useState(user?.role === "manager" ? user.warehouse_id || "QLD" : "QLD")
+  const [warehouse, setWarehouse] = useState(isRegionalManager(user) ? user.warehouse_id || "QLD" : "QLD")
   const [busy, setBusy] = useState(false)
   const binsQuery = useApi<any[]>(`/bins?warehouse_id=${warehouse}`)
   const bins = binsQuery.data || []
@@ -70,7 +71,7 @@ export default function Orders() {
       const result = await api<PurchaseOrder>(`/purchase-orders/lookup?reference=${encodeURIComponent(clean)}`)
       setOrder(result)
       setReference(result.number)
-      setWarehouse(result.warehouse_id || (user?.role === "manager" ? user.warehouse_id || "QLD" : "QLD"))
+      setWarehouse(result.warehouse_id || (isRegionalManager(user) ? user.warehouse_id || "QLD" : "QLD"))
       setArrivals({})
       setScan("")
     } catch (error: any) {

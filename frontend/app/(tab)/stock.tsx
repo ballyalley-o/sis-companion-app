@@ -1,3 +1,4 @@
+import { isRegionalManager } from "state/auth"
 import { PATH } from 'route/path'
 import { useEffect, useState } from "react"
 import { FlatList, RefreshControl, TextInput, View } from "react-native"
@@ -31,7 +32,7 @@ export default function Stock() {
     const t = setTimeout(() => setQ(text), 300)
     return () => clearTimeout(t)
   }, [text])
-  const effWh = user?.role === "manager" ? user.warehouse_id! : wh
+  const effWh = isRegionalManager(user) ? user.warehouse_id! : wh
   const res = useApi<any[]>(`/products?warehouse_id=${effWh}&q=${encodeURIComponent(q)}`)
   const bottomChrome = usesNativeTab ? insets.bottom : 0
 
@@ -47,7 +48,7 @@ export default function Stock() {
           <TextInput testID="stock-search-input" style={s.input} value={text} onChangeText={setText} placeholder="Search SKU, name or description" placeholderTextColor={colors.muted} autoCapitalize="characters" returnKeyType="search" />
           {!!text && <IconButton testID="stock-search-clear" icon="close" onPress={() => setText("")} />}
         </View>
-        {user?.role !== "manager" ? (
+        {!isRegionalManager(user) ? (
           <ChipRow testIDPrefix="stock-wh" value={wh} onChange={setWh} options={[{ label: "Queensland", value: "QLD" }, { label: "New South Wales", value: "NSW" }]} />
         ) : <Label style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.sm }}>{effWh} warehouse</Label>}
       </View>

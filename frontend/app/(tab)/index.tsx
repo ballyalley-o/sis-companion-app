@@ -1,3 +1,4 @@
+import { isRegionalManager, roleLabel } from "state/auth"
 import { PATH } from 'route/path'
 import { useState } from "react"
 import { Platform, Pressable, RefreshControl, ScrollView, View, useWindowDimensions } from "react-native"
@@ -46,7 +47,7 @@ export default function Home() {
   const desktop = Platform.OS === "web" && width >= 1000
   const staff = isStaff(user)
   const [wh, setWh] = useState<string>(user?.role === "admin" ? "ALL" : user?.warehouse_id || "ALL")
-  const q = useApi<any>(`/dashboard${wh !== "ALL" && user?.role !== "manager" ? `?warehouse_id=${wh}` : ""}`)
+  const q = useApi<any>(`/dashboard${wh !== "ALL" && !isRegionalManager(user) ? `?warehouse_id=${wh}` : ""}`)
   const unread = useApi<{ count: number }>("/notifications/unread-count")
   const bottomChrome = usesNativeTab ? insets.bottom : 0
   const d = q.data
@@ -61,12 +62,12 @@ export default function Home() {
             <IconButton testID="dashboard-notifications-button" icon="bell" badge={unread.data?.count} onPress={() => router.push(PATH.NOTIFICATION)} />
           </View>
           <View style={s.heading}>
-            <Label>{user?.role === "driller" ? "Driller" : user?.role === "manager" ? `${user.warehouse_id} Manager` : "Admin · all warehouses"}</Label>
+            <Label>{`${roleLabel(user?.role)}${isRegionalManager(user) ? ` · ${user.warehouse_id}` : ""}`}</Label>
             <H1 testID="dashboard-user-name">{user?.name}</H1>
           </View>
         </View>
 
-        {user?.role !== "manager" && (
+        {!isRegionalManager(user) && (
           <ChipRow testIDPrefix="dashboard-wh" value={wh} onChange={setWh}
             options={[{ label: "All sites", value: "ALL" }, { label: "Queensland", value: "QLD" }, { label: "New South Wales", value: "NSW" }]} />
         )}

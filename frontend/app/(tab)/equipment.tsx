@@ -1,3 +1,4 @@
+import { isRegionalManager } from "state/auth"
 import { PATH } from 'route/path'
 import { useEffect, useState } from "react"
 import { FlatList, RefreshControl, View } from "react-native"
@@ -34,7 +35,7 @@ export default function Equipment() {
         <Row style={{ paddingHorizontal: spacing.lg, justifyContent: "space-between" }}>
           <View>
             <H1>Equipment</H1>
-            <Label>Borrow & return register{user?.role === "manager" ? ` · ${user.warehouse_id}` : ""}</Label>
+            <Label>Borrow & return register{isRegionalManager(user) ? ` · ${user.warehouse_id}` : ""}</Label>
           </View>
           <IconButton testID="equipment-scan-button" icon="qrcode-scan" onPress={() => router.push(PATH.SCAN)} />
         </Row>
