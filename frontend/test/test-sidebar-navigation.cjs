@@ -16,12 +16,14 @@ const exportsObject = {}
 vm.runInNewContext(output, {
   exports: exportsObject,
   require: name => {
+    if (name === 'react') return require(name)
+    if (name === 'util/storage') return { storage: {} }
     if (name === 'react/jsx-runtime') return require(name)
-    if (name === 'react-native') return { Platform: { OS: 'web' }, Pressable: 'Pressable', View: 'View' }
+    if (name === 'react-native') return { Platform: { OS: 'web' }, Pressable: 'Pressable', ScrollView: 'ScrollView', View: 'View' }
     if (name === 'expo-image') return { Image: 'Image' }
     if (name === 'expo-router') return { Link: 'Link', useRouter: () => ({ push() {} }) }
     if (name === 'expo-router/unstable-native-tabs') return {}
-    if (name === 'config/navigation') return {}
+    if (name === 'config/navigation') return { SIDEBAR_WIDTH: { expanded: 248, collapsed: 80 } }
     if (name === 'state/auth') return {}
     if (name === 'route/path') return route
     if (name === 'component/version-info') return { VersionInfo: 'VersionInfo' }
@@ -47,8 +49,8 @@ const emitted = []
 const emitter = { emit: event => { emitted.push(event); return { defaultPrevented: prevented } } }
 const switched = []
 const navigateToTab = key => switched.push(key)
-let tree = exportsObject.DesktopSidebar({ state, descriptors, emitter, navigateToTab, user: { role: 'admin' } })
-const tabs = collect(tree, 'Pressable').filter(tab => tab.props.testID?.startsWith('sidebar-') && tab.props.testID !== 'sidebar-warehouse-map')
+let tree = exportsObject.DesktopSidebar({ state, descriptors, emitter, navigateToTab, user: { role: 'admin' }, collapsed: false, onToggle() {} })
+const tabs = collect(tree, 'Pressable').filter(tab => tab.props.accessibilityRole === 'tab')
 assert.deepEqual(tabs.map(tab => tab.props.testID), names.map(name => `sidebar-${name}`))
 for (const tab of tabs) tab.props.onPress()
 assert.deepEqual(switched, ['stock', 'equipment', 'orders', 'more'])
@@ -56,6 +58,20 @@ assert.equal(emitted.length, 5)
 prevented = true
 tabs[1].props.onPress()
 assert.deepEqual(switched, ['stock', 'equipment', 'orders', 'more'])
-tree = exportsObject.DesktopSidebar({ state, descriptors, emitter, navigateToTab, user: { role: 'driller' } })
+tree = exportsObject.DesktopSidebar({ state, descriptors, emitter, navigateToTab, user: { role: 'driller' }, collapsed: false, onToggle() {} })
 assert.equal(collect(tree, 'Pressable').some(tab => tab.props.testID === 'sidebar-orders'), false)
 console.log('SDK 58 sidebar switches all unfocused tabs by key, respects cancellation, and hides Orders from drillers.')
+
+let toggled = 0
+const collapsed = exportsObject.DesktopSidebar({ state, descriptors, emitter, navigateToTab, user: { role: 'admin' }, collapsed: true, onToggle: () => toggled++ })
+assert.equal(collapsed.props.style.at(-1).width, 80)
+const collapsedTabs = collect(collapsed, 'Pressable').filter(tab => tab.props.accessibilityRole === 'tab')
+assert.equal(collapsedTabs.length, 5)
+assert.equal(collapsedTabs[1].props.accessibilityLabel, 'Stock')
+assert.equal(collect(collapsedTabs[1], 'Body').length, 0)
+assert.equal(collect(collapsed, 'div').some(wrapper => wrapper.props.title === 'Stock'), true)
+const toggle = collect(collapsed, 'Pressable').find(button => button.props.testID === 'sidebar-toggle')
+assert.equal(toggle.props.accessibilityLabel, 'Expand sidebar')
+toggle.props.onPress()
+assert.equal(toggled, 1)
+console.log('Collapsed sidebar keeps accessible tabs and hover labels, uses compact width, and exposes the expand action.')
